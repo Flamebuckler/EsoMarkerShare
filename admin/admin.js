@@ -93,6 +93,10 @@ createGroupBtn.addEventListener('click', async () => {
 		});
 
 		const data = await response.json();
+		if (response.status === 401) {
+			showLogin('Session abgelaufen. Bitte erneut einloggen.');
+			throw new Error(data.error || 'Session abgelaufen.');
+		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
@@ -122,6 +126,10 @@ createRaidBtn.addEventListener('click', async () => {
 		});
 
 		const data = await response.json();
+		if (response.status === 401) {
+			showLogin('Session abgelaufen. Bitte erneut einloggen.');
+			throw new Error(data.error || 'Session abgelaufen.');
+		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
@@ -176,6 +184,10 @@ saveBtn.addEventListener('click', async () => {
 		});
 
 		const data = await response.json();
+		if (response.status === 401) {
+			showLogin('Session abgelaufen. Bitte erneut einloggen.');
+			throw new Error(data.error || 'Session abgelaufen.');
+		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
@@ -193,6 +205,15 @@ function showAdmin() {
 	adminPanel.classList.remove('hidden');
 	adminPanelRaids.classList.remove('hidden');
 	adminPanelMarkers.classList.remove('hidden');
+}
+
+function showLogin(message) {
+	localStorage.removeItem(TOKEN_KEY);
+	loginPanel.classList.remove('hidden');
+	adminPanel.classList.add('hidden');
+	adminPanelRaids.classList.add('hidden');
+	adminPanelMarkers.classList.add('hidden');
+	loginStatus.textContent = message || 'Bitte erneut einloggen.';
 }
 
 function getRequiredToken() {
@@ -405,6 +426,10 @@ async function apiDelete(path, token) {
 	});
 
 	const data = await response.json();
+	if (response.status === 401) {
+		showLogin('Session abgelaufen. Bitte erneut einloggen.');
+		throw new Error(data.error || 'Session abgelaufen.');
+	}
 	if (!response.ok) {
 		throw new Error(data.error || `HTTP ${response.status}`);
 	}
