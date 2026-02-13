@@ -1,4 +1,5 @@
 const API_BASE = window.APP_CONFIG?.API_BASE || '';
+const DELETE_ICON_SVG = '×';
 
 if (!API_BASE) {
 	throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
@@ -207,8 +208,28 @@ async function loadSelectionData() {
 
 		renderSelect(groupSelect, groups, 'Keine Raidgruppen vorhanden');
 		renderSelect(raidSelect, raids, 'Keine Raids vorhanden');
-		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden');
-		renderEntityList(raidList, raids, 'Keine Raids vorhanden');
+		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden', async (item) => {
+			if (!confirm(`Raidgruppe wirklich löschen?\n\n${item.name}`)) return;
+			try {
+				const activeToken = getRequiredToken();
+				await apiDelete(`/api/groups/${encodeURIComponent(item.id)}`, activeToken);
+				groupStatus.textContent = `Raidgruppe gelöscht: ${item.name}`;
+				await loadSelectionData();
+			} catch (error) {
+				groupStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
+			}
+		});
+		renderEntityList(raidList, raids, 'Keine Raids vorhanden', async (item) => {
+			if (!confirm(`Raid wirklich löschen?\n\n${item.name}`)) return;
+			try {
+				const activeToken = getRequiredToken();
+				await apiDelete(`/api/raids/${encodeURIComponent(item.id)}`, activeToken);
+				raidStatus.textContent = `Raid gelöscht: ${item.name}`;
+				await loadSelectionData();
+			} catch (error) {
+				raidStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
+			}
+		});
 		await loadMarkerList();
 	} catch (error) {
 		saveStatus.textContent = `Fehler beim Laden der Listen: ${error.message}`;
@@ -258,7 +279,30 @@ function renderMarkerList(markers, emptyLabel) {
 		const listItem = document.createElement('li');
 		const groupName = getEntityName(groupsCache, marker.groupId);
 		const raidName = getEntityName(raidsCache, marker.raidId);
-		listItem.textContent = `v${marker.version} - ${marker.title} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		const text = document.createElement('span');
+		text.textContent = `v${marker.version} - ${marker.title} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
+
+		const deleteButton = document.createElement('button');
+		deleteButton.type = 'button';
+		deleteButton.innerHTML = DELETE_ICON_SVG;
+		deleteButton.classList.add('icon-button');
+		deleteButton.title = 'Löschen';
+		deleteButton.setAttribute('aria-label', 'Löschen');
+		deleteButton.addEventListener('click', async () => {
+			if (!confirm(`Marker wirklich löschen?\n\n${marker.title} (v${marker.version})`)) return;
+			try {
+				const activeToken = getRequiredToken();
+				await apiDelete(`/api/markers/${encodeURIComponent(marker.id)}`, activeToken);
+				saveStatus.textContent = `Marker gelöscht: ${marker.title} (v${marker.version})`;
+				await loadMarkerList();
+			} catch (error) {
+				saveStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
+			}
+		});
+
+		listItem.appendChild(text);
+		listItem.appendChild(document.createTextNode(' '));
+		listItem.appendChild(deleteButton);
 		markerList.appendChild(listItem);
 	}
 }
@@ -269,7 +313,7 @@ function getEntityName(items, id) {
 	return match ? match.name : id;
 }
 
-function renderEntityList(listElement, items, emptyLabel) {
+function renderEntityList(listElement, items, emptyLabel, onDelete) {
 	listElement.innerHTML = '';
 
 	if (!items.length) {
@@ -281,7 +325,22 @@ function renderEntityList(listElement, items, emptyLabel) {
 
 	for (const item of items) {
 		const listItem = document.createElement('li');
-		listItem.textContent = item.name;
+		const text = document.createElement('span');
+		text.textContent = item.name;
+
+		const deleteButton = document.createElement('button');
+		deleteButton.type = 'button';
+		deleteButton.innerHTML = DELETE_ICON_SVG;
+		deleteButton.classList.add('icon-button');
+		deleteButton.title = 'Löschen';
+		deleteButton.setAttribute('aria-label', 'Löschen');
+		deleteButton.addEventListener('click', () => {
+			onDelete(item);
+		});
+
+		listItem.appendChild(text);
+		listItem.appendChild(document.createTextNode(' '));
+		listItem.appendChild(deleteButton);
 		listElement.appendChild(listItem);
 	}
 }
@@ -312,6 +371,22 @@ async function apiGet(path) {
 	const response = await fetch(`${API_BASE}${path}`);
 	const data = await response.json();
 
+	if (!response.ok) {
+		throw new Error(data.error || `HTTP ${response.status}`);
+	}
+
+	return data;
+}
+
+async function apiDelete(path, token) {
+	const response = await fetch(`${API_BASE}${path}`, {
+		method: 'DELETE',
+		headers: {
+			authorization: `Bearer ${token}`,
+		},
+	});
+
+	const data = await response.json();
 	if (!response.ok) {
 		throw new Error(data.error || `HTTP ${response.status}`);
 	}
