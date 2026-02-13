@@ -28,6 +28,7 @@ const raidList = document.getElementById('raidList');
 
 const groupSelect = document.getElementById('groupSelect');
 const raidSelect = document.getElementById('raidSelect');
+const markerTypeSelect = document.getElementById('markerType');
 const markerStringInput = document.getElementById('markerString');
 const saveBtn = document.getElementById('saveBtn');
 const saveStatus = document.getElementById('saveStatus');
@@ -141,6 +142,7 @@ saveBtn.addEventListener('click', async () => {
 	const payload = {
 		groupId: groupSelect.value,
 		raidId: raidSelect.value,
+		type: markerTypeSelect.value,
 		markerString,
 	};
 
@@ -151,6 +153,11 @@ saveBtn.addEventListener('click', async () => {
 
 	if (!payload.markerString.trim()) {
 		saveStatus.textContent = 'markerString ist erforderlich.';
+		return;
+	}
+
+	if (!payload.type) {
+		saveStatus.textContent = 'Typ ist erforderlich.';
 		return;
 	}
 
@@ -272,8 +279,9 @@ function renderMarkerList(markers, emptyLabel) {
 		const listItem = document.createElement('li');
 		const groupName = getEntityName(groupsCache, marker.groupId);
 		const raidName = getEntityName(raidsCache, marker.raidId);
+		const markerType = marker.type || 'Unbekannt';
 		const text = document.createElement('span');
-		text.textContent = `v${marker.version} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		text.textContent = `v${marker.version} (Typ: ${markerType}, Raidgruppe: ${groupName}, Raid: ${raidName})`;
 
 		const deleteButton = document.createElement('button');
 		deleteButton.type = 'button';

@@ -11,6 +11,7 @@ const markersContainer = document.getElementById('markers');
 const markerDetails = document.getElementById('markerDetails');
 const markerGroupName = document.getElementById('markerGroupName');
 const markerRaidName = document.getElementById('markerRaidName');
+const markerType = document.getElementById('markerType');
 const markerVersion = document.getElementById('markerVersion');
 const markerString = document.getElementById('markerString');
 const copyBtn = document.getElementById('copyBtn');
@@ -113,7 +114,7 @@ function renderMarkers(markers) {
 	for (const marker of markers) {
 		const button = document.createElement('button');
 		button.type = 'button';
-		button.textContent = `v${marker.version}`;
+		button.textContent = marker.type ? `v${marker.version} · ${marker.type}` : `v${marker.version}`;
 		button.addEventListener('click', async () => {
 			activateButton(markersContainer, button);
 			await loadMarker(marker.id);
@@ -148,6 +149,7 @@ function showMarkerDetails(marker, groups, raids) {
 
 	markerGroupName.textContent = group ? group.name : marker.groupId || 'Unbekannt';
 	markerRaidName.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
+	markerType.textContent = marker.type || 'Unbekannt';
 	markerVersion.textContent = String(marker.version);
 	markerString.value = marker.markerString;
 	copyStatus.textContent = '';

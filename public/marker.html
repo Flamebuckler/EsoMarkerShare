@@ -63,6 +63,7 @@
 		<section class="panel">
 			<p><strong>Raidgruppe:</strong> <span id="groupName"></span></p>
 			<p><strong>Raid:</strong> <span id="raidName"></span></p>
+			<p><strong>Typ:</strong> <span id="type"></span></p>
 			<p><strong>Version:</strong> <span id="version"></span></p>
 			<button
 				id="copyBtn"
@@ -90,6 +91,7 @@
 			const versionEl = document.getElementById('version');
 			const groupNameEl = document.getElementById('groupName');
 			const raidNameEl = document.getElementById('raidName');
+			const typeEl = document.getElementById('type');
 			const markerEl = document.getElementById('markerString');
 			const copyBtn = document.getElementById('copyBtn');
 			const copyStatus = document.getElementById('copyStatus');
@@ -128,6 +130,7 @@
 
 					groupNameEl.textContent = group ? group.name : marker.groupId || 'Unbekannt';
 					raidNameEl.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
+					typeEl.textContent = marker.type || 'Unbekannt';
 					versionEl.textContent = String(marker.version);
 					markerEl.value = marker.markerString;
 

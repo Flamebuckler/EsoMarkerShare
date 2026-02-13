@@ -1,4 +1,5 @@
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+const SUPPORTED_MARKER_TYPES = ['Akamatsu Marker', 'Elms', 'Breadcrumbs'];
 
 export default {
 	async fetch(request, env) {
@@ -79,7 +80,7 @@ export default {
 				if (!marker) {
 					return json({ error: 'Marker nicht gefunden.' }, 404, origin, env);
 				}
-				return json({ marker }, 200, origin, env);
+				return json({ marker: mapMarkerType(marker) }, 200, origin, env);
 			}
 
 			if (markerMatch && method === 'DELETE') {
@@ -142,6 +143,7 @@ export default {
 					id: markerId,
 					groupId,
 					raidId,
+					type: normalizeMarkerType(body.type),
 					version: newVersion,
 					markerString: String(body.markerString),
 					createdAt: new Date().toISOString(),
@@ -340,7 +342,7 @@ async function safeJson(request) {
 }
 
 function validateMarkerInput(body) {
-	const required = ['groupId', 'raidId', 'markerString'];
+	const required = ['groupId', 'raidId', 'type', 'markerString'];
 	for (const key of required) {
 		const value = body[key];
 		if (typeof value !== 'string' || !value.trim()) {
@@ -348,7 +350,25 @@ function validateMarkerInput(body) {
 		}
 	}
 
+	if (!SUPPORTED_MARKER_TYPES.includes(normalizeMarkerType(body.type))) {
+		return `Ungültiger type. Erlaubt: ${SUPPORTED_MARKER_TYPES.join(', ')}`;
+	}
+
 	return '';
+}
+
+function normalizeMarkerType(type) {
+	const value = String(type || '').trim();
+	if (value === 'Akamatsu') return 'Akamatsu Marker';
+	return value;
+}
+
+function mapMarkerType(marker) {
+	if (!marker) return marker;
+	return {
+		...marker,
+		type: normalizeMarkerType(marker.type),
+	};
 }
 
 function normalizeName(value) {
@@ -413,6 +433,7 @@ async function getMarkerSummariesForPair(kv, groupId, raidId) {
 				id: marker.id,
 				groupId: marker.groupId,
 				raidId: marker.raidId,
+				type: normalizeMarkerType(marker.type),
 				version: marker.version,
 				createdAt: marker.createdAt,
 			};
@@ -440,6 +461,7 @@ async function getAllMarkerSummaries(kv) {
 				id: marker.id,
 				groupId: marker.groupId,
 				raidId: marker.raidId,
+				type: normalizeMarkerType(marker.type),
 				version: marker.version,
 				createdAt: marker.createdAt,
 			};
