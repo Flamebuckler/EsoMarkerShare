@@ -304,13 +304,24 @@ function renderMarkerList(markers, emptyLabel) {
 		const markerType = marker.type || 'Unbekannt';
 		const text = document.createElement('span');
 		text.textContent = `v${marker.version} (Typ: ${markerType}, Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		const detailUrl = getMarkerDetailUrl(marker.id);
 
-		const detailLink = document.createElement('a');
-		detailLink.href = getMarkerDetailUrl(marker.id);
-		detailLink.textContent = 'Zur Detailseite';
-		detailLink.classList.add('detail-link');
-		detailLink.target = '_blank';
-		detailLink.rel = 'noopener noreferrer';
+		const detailButton = document.createElement('button');
+		detailButton.type = 'button';
+		detailButton.classList.add('inline-button');
+		detailButton.textContent = 'Zur Detailseite';
+		detailButton.addEventListener('click', () => {
+			window.open(detailUrl, '_blank', 'noopener,noreferrer');
+		});
+
+		const copyLinkButton = document.createElement('button');
+		copyLinkButton.type = 'button';
+		copyLinkButton.classList.add('inline-button');
+		copyLinkButton.textContent = 'Link kopieren';
+		copyLinkButton.addEventListener('click', async () => {
+			const ok = await copyText(detailUrl);
+			saveStatus.textContent = ok ? 'Detail-Link kopiert.' : 'Kopieren fehlgeschlagen.';
+		});
 
 		const deleteButton = document.createElement('button');
 		deleteButton.type = 'button';
@@ -334,7 +345,9 @@ function renderMarkerList(markers, emptyLabel) {
 		listItem.appendChild(document.createTextNode(' '));
 		listItem.appendChild(deleteButton);
 		listItem.appendChild(document.createElement('br'));
-		listItem.appendChild(detailLink);
+		listItem.appendChild(detailButton);
+		listItem.appendChild(document.createTextNode(' '));
+		listItem.appendChild(copyLinkButton);
 		markerList.appendChild(listItem);
 	}
 }
@@ -345,6 +358,32 @@ function getMarkerDetailUrl(markerId) {
 	const url = new URL(markerPath, window.location.href);
 	url.searchParams.set('id', markerId);
 	return url.toString();
+}
+
+async function copyText(text) {
+	try {
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			await navigator.clipboard.writeText(text);
+			return true;
+		}
+	} catch {}
+
+	const textarea = document.createElement('textarea');
+	textarea.value = text;
+	textarea.setAttribute('readonly', '');
+	textarea.style.position = 'absolute';
+	textarea.style.left = '-9999px';
+	document.body.appendChild(textarea);
+	textarea.select();
+	textarea.setSelectionRange(0, textarea.value.length);
+
+	try {
+		return document.execCommand('copy');
+	} catch {
+		return false;
+	} finally {
+		document.body.removeChild(textarea);
+	}
 }
 
 function getEntityName(items, id) {
