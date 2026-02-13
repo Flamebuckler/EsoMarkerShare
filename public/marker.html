@@ -41,13 +41,28 @@
 			.muted {
 				color: #aeb7c6;
 			}
+			.back-link {
+				display: inline-block;
+				margin-bottom: 12px;
+				color: #b8c9e6;
+				text-decoration: none;
+			}
+			.back-link:hover {
+				text-decoration: underline;
+			}
 		</style>
 	</head>
 	<body>
 		<h1>ESO Marker Detail</h1>
+		<a
+			class="back-link"
+			href="./index.html"
+			>← Zurück</a
+		>
 
 		<section class="panel">
-			<h2>Marker</h2>
+			<p><strong>Raidgruppe:</strong> <span id="groupName"></span></p>
+			<p><strong>Raid:</strong> <span id="raidName"></span></p>
 			<p><strong>Version:</strong> <span id="version"></span></p>
 			<button
 				id="copyBtn"
@@ -64,9 +79,7 @@
 				readonly></textarea>
 		</section>
 
-		<script
-			src="../config.js"
-			defer></script>
+		<script src="../config.js"></script>
 		<script>
 			const API_BASE = window.APP_CONFIG?.API_BASE || '';
 
@@ -75,6 +88,8 @@
 			}
 
 			const versionEl = document.getElementById('version');
+			const groupNameEl = document.getElementById('groupName');
+			const raidNameEl = document.getElementById('raidName');
 			const markerEl = document.getElementById('markerString');
 			const copyBtn = document.getElementById('copyBtn');
 			const copyStatus = document.getElementById('copyStatus');
@@ -90,16 +105,36 @@
 
 			async function loadMarker(id) {
 				try {
-					const response = await fetch(`${API_BASE}/api/markers/${encodeURIComponent(id)}`);
-					const data = await response.json();
+					const [markerResponse, groupsResponse, raidsResponse] = await Promise.all([
+						fetch(`${API_BASE}/api/markers/${encodeURIComponent(id)}`),
+						fetch(`${API_BASE}/api/groups`),
+						fetch(`${API_BASE}/api/raids`),
+					]);
 
-					if (!response.ok) {
-						throw new Error(data.error || `HTTP ${response.status}`);
+					const data = await markerResponse.json();
+					const groupsData = await groupsResponse.json();
+					const raidsData = await raidsResponse.json();
+
+					if (!markerResponse.ok) {
+						throw new Error(data.error || `HTTP ${markerResponse.status}`);
 					}
 
 					const marker = data.marker;
+					const groups = groupsData.groups || [];
+					const raids = raidsData.raids || [];
+
+					const group = groups.find((item) => item.id === marker.groupId);
+					const raid = raids.find((item) => item.id === marker.raidId);
+
+					groupNameEl.textContent = group ? group.name : marker.groupId || 'Unbekannt';
+					raidNameEl.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
 					versionEl.textContent = String(marker.version);
 					markerEl.value = marker.markerString;
+
+					const autoCopied = await copyText(marker.markerString);
+					copyStatus.textContent = autoCopied
+						? 'Automatisch in die Zwischenablage kopiert.'
+						: 'Automatisches Kopieren nicht möglich. Bitte Button nutzen.';
 
 					copyBtn.onclick = async () => {
 						const ok = await copyText(marker.markerString);

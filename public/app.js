@@ -9,6 +9,8 @@ const raidsContainer = document.getElementById('raids');
 const markersContainer = document.getElementById('markers');
 
 const markerDetails = document.getElementById('markerDetails');
+const markerGroupName = document.getElementById('markerGroupName');
+const markerRaidName = document.getElementById('markerRaidName');
 const markerVersion = document.getElementById('markerVersion');
 const markerString = document.getElementById('markerString');
 const copyBtn = document.getElementById('copyBtn');
@@ -122,16 +124,30 @@ function renderMarkers(markers) {
 
 async function loadMarker(markerId) {
 	try {
-		const response = await apiGet(`/api/markers/${encodeURIComponent(markerId)}`);
-		showMarkerDetails(response.marker);
+		const [markerResponse, groupsResponse, raidsResponse] = await Promise.all([
+			apiGet(`/api/markers/${encodeURIComponent(markerId)}`),
+			apiGet('/api/groups'),
+			apiGet('/api/raids'),
+		]);
+
+		showMarkerDetails(
+			markerResponse.marker,
+			groupsResponse.groups || [],
+			raidsResponse.raids || [],
+		);
 	} catch (error) {
 		hideMarkerDetails();
 		copyStatus.textContent = `Fehler: ${error.message}`;
 	}
 }
 
-function showMarkerDetails(marker) {
+function showMarkerDetails(marker, groups, raids) {
 	markerDetails.classList.remove('hidden');
+	const group = groups.find((item) => item.id === marker.groupId);
+	const raid = raids.find((item) => item.id === marker.raidId);
+
+	markerGroupName.textContent = group ? group.name : marker.groupId || 'Unbekannt';
+	markerRaidName.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
 	markerVersion.textContent = String(marker.version);
 	markerString.value = marker.markerString;
 	copyStatus.textContent = '';
