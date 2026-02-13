@@ -219,6 +219,7 @@ function showLogin(message) {
 function getRequiredToken() {
 	const token = localStorage.getItem(TOKEN_KEY);
 	if (!token) {
+		showLogin('Session abgelaufen. Bitte erneut einloggen.');
 		throw new Error('Nicht eingeloggt.');
 	}
 	return token;
@@ -409,6 +410,11 @@ function renderSelect(selectElement, items, emptyLabel) {
 async function apiGet(path) {
 	const response = await fetch(`${API_BASE}${path}`);
 	const data = await response.json();
+
+	if (response.status === 401) {
+		showLogin('Session abgelaufen. Bitte erneut einloggen.');
+		throw new Error(data.error || 'Session abgelaufen.');
+	}
 
 	if (!response.ok) {
 		throw new Error(data.error || `HTTP ${response.status}`);
