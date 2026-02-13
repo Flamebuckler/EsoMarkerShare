@@ -47,6 +47,11 @@ export default {
 				return json({ groups }, 200, origin, env);
 			}
 
+			if (path === '/api/raids' && method === 'GET') {
+				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
+				return json({ raids }, 200, origin, env);
+			}
+
 			const groupsRaidsMatch = path.match(/^\/api\/groups\/([^/]+)\/raids$/);
 			if (groupsRaidsMatch && method === 'GET') {
 				const groupId = decodeURIComponent(groupsRaidsMatch[1]);
@@ -84,38 +89,19 @@ export default {
 					return json({ error: validationError }, 400, origin, env);
 				}
 
-				const groupName = String(body.groupName || '').trim();
-				const raidName = String(body.raidName || '').trim();
-
 				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
-				let group = groups.find((item) => normalizeName(item.name) === normalizeName(groupName));
-				if (!group) {
-					const groupId = generateEntityId(
-						'grp',
-						groupName,
-						groups.map((item) => item.id),
-					);
-					group = { id: groupId, name: groupName };
-					groups.push(group);
-					await env.ESO_Marker_KV.put('groups', JSON.stringify(groups));
+				const groupId = String(body.groupId || '').trim();
+				const groupExists = groups.some((item) => item.id === groupId);
+				if (!groupExists) {
+					return json({ error: 'Ungültige groupId.' }, 400, origin, env);
 				}
-
-				const groupId = group.id;
 
 				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
-				let raid = raids.find((item) => normalizeName(item.name) === normalizeName(raidName));
-				if (!raid) {
-					const raidId = generateEntityId(
-						'raid',
-						raidName,
-						raids.map((item) => item.id),
-					);
-					raid = { id: raidId, name: raidName };
-					raids.push(raid);
-					await env.ESO_Marker_KV.put('raids', JSON.stringify(raids));
+				const raidId = String(body.raidId || '').trim();
+				const raidExists = raids.some((item) => item.id === raidId);
+				if (!raidExists) {
+					return json({ error: 'Ungültige raidId.' }, 400, origin, env);
 				}
-
-				const raidId = raid.id;
 
 				const groupRaidIdsKey = `group:${groupId}:raidIds`;
 				const groupRaidIds = (await getJson(env.ESO_Marker_KV, groupRaidIdsKey)) || [];
@@ -151,6 +137,66 @@ export default {
 				await env.ESO_Marker_KV.put(markerIdsKey, JSON.stringify(markerIds));
 
 				return json({ marker }, 201, origin, env);
+			}
+
+			if (path === '/api/groups' && method === 'POST') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const body = await safeJson(request);
+				const name = String(body.name || '').trim();
+				if (!name) {
+					return json({ error: 'Feld name ist erforderlich.' }, 400, origin, env);
+				}
+
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				const existing = groups.find((item) => normalizeName(item.name) === normalizeName(name));
+				if (existing) {
+					return json({ group: existing, created: false }, 200, origin, env);
+				}
+
+				const groupId = generateEntityId(
+					'grp',
+					name,
+					groups.map((item) => item.id),
+				);
+				const group = { id: groupId, name };
+				groups.push(group);
+				await env.ESO_Marker_KV.put('groups', JSON.stringify(groups));
+
+				return json({ group, created: true }, 201, origin, env);
+			}
+
+			if (path === '/api/raids' && method === 'POST') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const body = await safeJson(request);
+				const name = String(body.name || '').trim();
+				if (!name) {
+					return json({ error: 'Feld name ist erforderlich.' }, 400, origin, env);
+				}
+
+				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
+				const existing = raids.find((item) => normalizeName(item.name) === normalizeName(name));
+				if (existing) {
+					return json({ raid: existing, created: false }, 200, origin, env);
+				}
+
+				const raidId = generateEntityId(
+					'raid',
+					name,
+					raids.map((item) => item.id),
+				);
+				const raid = { id: raidId, name };
+				raids.push(raid);
+				await env.ESO_Marker_KV.put('raids', JSON.stringify(raids));
+
+				return json({ raid, created: true }, 201, origin, env);
 			}
 
 			return json({ error: 'Route nicht gefunden.' }, 404, origin, env);
@@ -215,7 +261,7 @@ async function safeJson(request) {
 }
 
 function validateMarkerInput(body) {
-	const required = ['groupName', 'raidName', 'title', 'description', 'markerString'];
+	const required = ['groupId', 'raidId', 'title', 'description', 'markerString'];
 	for (const key of required) {
 		const value = body[key];
 		if (typeof value !== 'string' || !value.trim()) {

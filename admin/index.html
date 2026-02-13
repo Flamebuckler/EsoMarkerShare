@@ -26,7 +26,8 @@
 				margin: 10px 0 4px;
 			}
 			input,
-			textarea {
+			textarea,
+			select {
 				width: 100%;
 				box-sizing: border-box;
 				padding: 8px;
@@ -82,19 +83,53 @@
 		<section
 			class="panel hidden"
 			id="adminPanel">
-			<h2>Neue Marker-Version erstellen</h2>
+			<h2>Raidgruppe erstellen</h2>
 
-			<label for="groupName">Raidgruppen-Name</label>
+			<label for="newGroupName">Raidgruppen-Name</label>
 			<input
-				id="groupName"
+				id="newGroupName"
 				type="text"
 				placeholder="z. B. Raidgruppe A" />
+			<button
+				id="createGroupBtn"
+				type="button">
+				Raidgruppe anlegen
+			</button>
+			<div
+				id="groupStatus"
+				class="status"></div>
+		</section>
 
-			<label for="raidName">Raid-Name</label>
+		<section
+			class="panel hidden"
+			id="adminPanelRaids">
+			<h2>Raid erstellen</h2>
+
+			<label for="newRaidName">Raid-Name</label>
 			<input
-				id="raidName"
+				id="newRaidName"
 				type="text"
 				placeholder="z. B. Sunspire" />
+			<button
+				id="createRaidBtn"
+				type="button">
+				Raid anlegen
+			</button>
+			<div
+				id="raidStatus"
+				class="status"></div>
+		</section>
+
+		<section
+			class="panel hidden"
+			id="adminPanelMarkers">
+			<h2>Neue Marker-Version erstellen</h2>
+
+			<label for="groupSelect">Raidgruppe</label>
+			<select id="groupSelect"></select>
+
+			<label for="raidSelect">Raid</label>
+			<select id="raidSelect"></select>
 
 			<label for="title">Titel</label>
 			<input

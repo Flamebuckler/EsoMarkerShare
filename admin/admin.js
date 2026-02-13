@@ -7,14 +7,24 @@ const TOKEN_KEY = 'eso_admin_token';
 
 const loginPanel = document.getElementById('loginPanel');
 const adminPanel = document.getElementById('adminPanel');
+const adminPanelRaids = document.getElementById('adminPanelRaids');
+const adminPanelMarkers = document.getElementById('adminPanelMarkers');
 
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
 const loginStatus = document.getElementById('loginStatus');
 
-const groupNameInput = document.getElementById('groupName');
-const raidNameInput = document.getElementById('raidName');
+const newGroupNameInput = document.getElementById('newGroupName');
+const createGroupBtn = document.getElementById('createGroupBtn');
+const groupStatus = document.getElementById('groupStatus');
+
+const newRaidNameInput = document.getElementById('newRaidName');
+const createRaidBtn = document.getElementById('createRaidBtn');
+const raidStatus = document.getElementById('raidStatus');
+
+const groupSelect = document.getElementById('groupSelect');
+const raidSelect = document.getElementById('raidSelect');
 const titleInput = document.getElementById('title');
 const descriptionInput = document.getElementById('description');
 const markerStringInput = document.getElementById('markerString');
@@ -24,6 +34,7 @@ const saveStatus = document.getElementById('saveStatus');
 const token = localStorage.getItem(TOKEN_KEY);
 if (token) {
 	showAdmin();
+	loadSelectionData();
 }
 
 loginBtn.addEventListener('click', async () => {
@@ -47,8 +58,67 @@ loginBtn.addEventListener('click', async () => {
 		localStorage.setItem(TOKEN_KEY, data.token);
 		loginStatus.textContent = 'Login erfolgreich.';
 		showAdmin();
+		await loadSelectionData();
 	} catch (error) {
 		loginStatus.textContent = `Login fehlgeschlagen: ${error.message}`;
+	}
+});
+
+createGroupBtn.addEventListener('click', async () => {
+	groupStatus.textContent = 'Speichern läuft...';
+
+	try {
+		const activeToken = getRequiredToken();
+		const response = await fetch(`${API_BASE}/api/groups`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${activeToken}`,
+			},
+			body: JSON.stringify({ name: newGroupNameInput.value.trim() }),
+		});
+
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.error || `HTTP ${response.status}`);
+		}
+
+		groupStatus.textContent = data.created
+			? `Raidgruppe erstellt: ${data.group.name}`
+			: `Raidgruppe existiert bereits: ${data.group.name}`;
+		newGroupNameInput.value = '';
+		await loadSelectionData();
+	} catch (error) {
+		groupStatus.textContent = `Fehler: ${error.message}`;
+	}
+});
+
+createRaidBtn.addEventListener('click', async () => {
+	raidStatus.textContent = 'Speichern läuft...';
+
+	try {
+		const activeToken = getRequiredToken();
+		const response = await fetch(`${API_BASE}/api/raids`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${activeToken}`,
+			},
+			body: JSON.stringify({ name: newRaidNameInput.value.trim() }),
+		});
+
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.error || `HTTP ${response.status}`);
+		}
+
+		raidStatus.textContent = data.created
+			? `Raid erstellt: ${data.raid.name}`
+			: `Raid existiert bereits: ${data.raid.name}`;
+		newRaidNameInput.value = '';
+		await loadSelectionData();
+	} catch (error) {
+		raidStatus.textContent = `Fehler: ${error.message}`;
 	}
 });
 
@@ -56,20 +126,22 @@ saveBtn.addEventListener('click', async () => {
 	const markerString = markerStringInput.value;
 
 	const payload = {
-		groupName: groupNameInput.value.trim(),
-		raidName: raidNameInput.value.trim(),
+		groupId: groupSelect.value,
+		raidId: raidSelect.value,
 		title: titleInput.value.trim(),
 		description: descriptionInput.value.trim(),
 		markerString,
 	};
 
+	if (!payload.groupId || !payload.raidId) {
+		saveStatus.textContent = 'Bitte zuerst eine Raidgruppe und einen Raid auswählen.';
+		return;
+	}
+
 	saveStatus.textContent = 'Speichern läuft...';
 
 	try {
-		const activeToken = localStorage.getItem(TOKEN_KEY);
-		if (!activeToken) {
-			throw new Error('Nicht eingeloggt.');
-		}
+		const activeToken = getRequiredToken();
 
 		const response = await fetch(`${API_BASE}/api/markers`, {
 			method: 'POST',
@@ -95,4 +167,57 @@ saveBtn.addEventListener('click', async () => {
 function showAdmin() {
 	loginPanel.classList.add('hidden');
 	adminPanel.classList.remove('hidden');
+	adminPanelRaids.classList.remove('hidden');
+	adminPanelMarkers.classList.remove('hidden');
+}
+
+function getRequiredToken() {
+	const token = localStorage.getItem(TOKEN_KEY);
+	if (!token) {
+		throw new Error('Nicht eingeloggt.');
+	}
+	return token;
+}
+
+async function loadSelectionData() {
+	try {
+		const [groupsData, raidsData] = await Promise.all([
+			apiGet('/api/groups'),
+			apiGet('/api/raids'),
+		]);
+		renderSelect(groupSelect, groupsData.groups || [], 'Keine Raidgruppen vorhanden');
+		renderSelect(raidSelect, raidsData.raids || [], 'Keine Raids vorhanden');
+	} catch (error) {
+		saveStatus.textContent = `Fehler beim Laden der Listen: ${error.message}`;
+	}
+}
+
+function renderSelect(selectElement, items, emptyLabel) {
+	selectElement.innerHTML = '';
+
+	if (!items.length) {
+		const option = document.createElement('option');
+		option.value = '';
+		option.textContent = emptyLabel;
+		selectElement.appendChild(option);
+		return;
+	}
+
+	for (const item of items) {
+		const option = document.createElement('option');
+		option.value = item.id;
+		option.textContent = item.name;
+		selectElement.appendChild(option);
+	}
+}
+
+async function apiGet(path) {
+	const response = await fetch(`${API_BASE}${path}`);
+	const data = await response.json();
+
+	if (!response.ok) {
+		throw new Error(data.error || `HTTP ${response.status}`);
+	}
+
+	return data;
 }
