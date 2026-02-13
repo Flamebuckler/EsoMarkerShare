@@ -1,0 +1,57 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static site layout
+        run: |
+          mkdir -p dist/admin
+
+          cp public/index.html dist/index.html
+          cp public/app.js dist/app.js
+          cp public/marker.html dist/marker.html
+
+          cp admin/index.html dist/admin/index.html
+          cp admin/admin.js dist/admin/admin.js
+
+          cp config.js dist/config.js
+
+          sed -i 's|src="../config.js"|src="./config.js"|g' dist/index.html
+          sed -i 's|src="../config.js"|src="./config.js"|g' dist/marker.html
+
+          touch dist/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

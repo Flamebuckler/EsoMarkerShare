@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0" />
+		<title>ESO Marker Admin</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 24px;
+				line-height: 1.4;
+				color: #111;
+			}
+			.panel {
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				padding: 16px;
+				margin-bottom: 16px;
+			}
+			label {
+				display: block;
+				font-weight: bold;
+				margin: 10px 0 4px;
+			}
+			input,
+			textarea {
+				width: 100%;
+				box-sizing: border-box;
+				padding: 8px;
+			}
+			textarea {
+				resize: vertical;
+			}
+			button {
+				cursor: pointer;
+				border: 1px solid #bbb;
+				background: #f9f9f9;
+				border-radius: 6px;
+				padding: 8px 10px;
+				margin-top: 12px;
+			}
+			.hidden {
+				display: none;
+			}
+			.status {
+				margin-top: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>ESO Marker Admin</h1>
+
+		<section
+			class="panel"
+			id="loginPanel">
+			<h2>Login</h2>
+			<label for="username">Benutzername</label>
+			<input
+				id="username"
+				type="text"
+				autocomplete="username" />
+
+			<label for="password">Passwort</label>
+			<input
+				id="password"
+				type="password"
+				autocomplete="current-password" />
+
+			<button
+				id="loginBtn"
+				type="button">
+				Einloggen
+			</button>
+			<div
+				id="loginStatus"
+				class="status"></div>
+		</section>
+
+		<section
+			class="panel hidden"
+			id="adminPanel">
+			<h2>Neue Marker-Version erstellen</h2>
+
+			<label for="groupId">Group ID</label>
+			<input
+				id="groupId"
+				type="text"
+				placeholder="z. B. raidgruppe-a" />
+
+			<label for="groupName">Group Name (nur für neue Gruppe nötig)</label>
+			<input
+				id="groupName"
+				type="text"
+				placeholder="z. B. Raidgruppe A" />
+
+			<label for="raidId">Raid ID</label>
+			<input
+				id="raidId"
+				type="text"
+				placeholder="z. B. sunspire" />
+
+			<label for="raidName">Raid Name (nur für neuen Raid nötig)</label>
+			<input
+				id="raidName"
+				type="text"
+				placeholder="z. B. Sunspire" />
+
+			<label for="title">Titel</label>
+			<input
+				id="title"
+				type="text" />
+
+			<label for="description">Beschreibung</label>
+			<textarea
+				id="description"
+				rows="4"></textarea>
+
+			<label for="markerString">Marker-String (800-3000 Zeichen)</label>
+			<textarea
+				id="markerString"
+				rows="15"></textarea>
+
+			<button
+				id="saveBtn"
+				type="button">
+				Marker speichern
+			</button>
+			<div
+				id="saveStatus"
+				class="status"></div>
+		</section>
+
+		<script
+			src="../config.js"
+			defer></script>
+		<script
+			src="./admin.js"
+			defer></script>
+	</body>
+</html>

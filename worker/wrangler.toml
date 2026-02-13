@@ -1,0 +1,8 @@
+name = "eso-marker-share-api"
+main = "index.js"
+compatibility_date = "2026-02-13"
+
+[[kv_namespaces]]
+binding = "ESO_Marker_KV"
+id = "0a2836d4a0674e09a13b934fa6da9c76" 
+preview_id = "6818d53a5a614578a6cfe2dbbbe027a1"

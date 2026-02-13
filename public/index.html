@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0" />
+		<title>ESO Marker Share</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 24px;
+				line-height: 1.4;
+				color: #111;
+			}
+			h1,
+			h2,
+			h3 {
+				margin: 0 0 12px;
+			}
+			.layout {
+				display: grid;
+				gap: 16px;
+			}
+			.panel {
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				padding: 16px;
+			}
+			.list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+			}
+			button {
+				cursor: pointer;
+				border: 1px solid #bbb;
+				background: #f9f9f9;
+				border-radius: 6px;
+				padding: 8px 10px;
+			}
+			button.active {
+				border-color: #333;
+				background: #ececec;
+			}
+			textarea {
+				width: 100%;
+				box-sizing: border-box;
+			}
+			.muted {
+				color: #666;
+			}
+			.row {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+			}
+			.hidden {
+				display: none;
+			}
+			.link {
+				word-break: break-all;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>ESO Marker Share</h1>
+
+		<div class="layout">
+			<section class="panel">
+				<h2>Raidgruppen</h2>
+				<div
+					id="groups"
+					class="list"></div>
+			</section>
+
+			<section class="panel">
+				<h2>Raids</h2>
+				<div
+					id="raids"
+					class="list"></div>
+			</section>
+
+			<section class="panel">
+				<h2>Marker-Versionen</h2>
+				<div
+					id="markers"
+					class="list"></div>
+			</section>
+
+			<section
+				id="markerDetails"
+				class="panel hidden">
+				<h2 id="markerTitle"></h2>
+				<p><strong>Version:</strong> <span id="markerVersion"></span></p>
+				<p id="markerDescription"></p>
+				<div class="row">
+					<button
+						id="copyBtn"
+						type="button">
+						Marker kopieren
+					</button>
+					<span
+						id="copyStatus"
+						class="muted"></span>
+				</div>
+				<p class="muted">Direktlink:</p>
+				<a
+					id="directLink"
+					class="link"
+					href="#"></a>
+				<p></p>
+				<textarea
+					id="markerString"
+					rows="15"
+					readonly></textarea>
+			</section>
+		</div>
+
+		<script
+			src="../config.js"
+			defer></script>
+		<script
+			src="./app.js"
+			defer></script>
+	</body>
+</html>

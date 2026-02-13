@@ -1,0 +1,190 @@
+const API_BASE = window.APP_CONFIG?.API_BASE || '';
+
+if (!API_BASE) {
+	throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
+}
+
+const groupsContainer = document.getElementById('groups');
+const raidsContainer = document.getElementById('raids');
+const markersContainer = document.getElementById('markers');
+
+const markerDetails = document.getElementById('markerDetails');
+const markerTitle = document.getElementById('markerTitle');
+const markerVersion = document.getElementById('markerVersion');
+const markerDescription = document.getElementById('markerDescription');
+const markerString = document.getElementById('markerString');
+const copyBtn = document.getElementById('copyBtn');
+const copyStatus = document.getElementById('copyStatus');
+const directLink = document.getElementById('directLink');
+
+let selectedGroupId = '';
+let selectedRaidId = '';
+
+init();
+
+async function init() {
+	try {
+		const groupsResponse = await apiGet('/api/groups');
+		renderGroups(groupsResponse.groups || []);
+	} catch (error) {
+		groupsContainer.textContent = `Fehler: ${error.message}`;
+	}
+}
+
+function renderGroups(groups) {
+	groupsContainer.innerHTML = '';
+
+	if (!groups.length) {
+		groupsContainer.textContent = 'Keine Gruppen gefunden.';
+		return;
+	}
+
+	for (const group of groups) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.textContent = group.name;
+		button.addEventListener('click', async () => {
+			selectedGroupId = group.id;
+			selectedRaidId = '';
+			activateButton(groupsContainer, button);
+			markersContainer.innerHTML = '';
+			hideMarkerDetails();
+			await loadRaids(group.id);
+		});
+		groupsContainer.appendChild(button);
+	}
+}
+
+async function loadRaids(groupId) {
+	raidsContainer.innerHTML = 'Lädt...';
+	markersContainer.innerHTML = '';
+
+	try {
+		const response = await apiGet(`/api/groups/${encodeURIComponent(groupId)}/raids`);
+		renderRaids(response.raids || []);
+	} catch (error) {
+		raidsContainer.textContent = `Fehler: ${error.message}`;
+	}
+}
+
+function renderRaids(raids) {
+	raidsContainer.innerHTML = '';
+
+	if (!raids.length) {
+		raidsContainer.textContent = 'Keine Raids für diese Gruppe gefunden.';
+		return;
+	}
+
+	for (const raid of raids) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.textContent = raid.name;
+		button.addEventListener('click', async () => {
+			selectedRaidId = raid.id;
+			activateButton(raidsContainer, button);
+			hideMarkerDetails();
+			await loadMarkers(raid.id);
+		});
+		raidsContainer.appendChild(button);
+	}
+}
+
+async function loadMarkers(raidId) {
+	markersContainer.innerHTML = 'Lädt...';
+
+	try {
+		const response = await apiGet(`/api/raids/${encodeURIComponent(raidId)}/markers`);
+		renderMarkers(response.markers || []);
+	} catch (error) {
+		markersContainer.textContent = `Fehler: ${error.message}`;
+	}
+}
+
+function renderMarkers(markers) {
+	markersContainer.innerHTML = '';
+
+	if (!markers.length) {
+		markersContainer.textContent = 'Keine Marker-Versionen gefunden.';
+		return;
+	}
+
+	for (const marker of markers) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.textContent = `v${marker.version} - ${marker.title}`;
+		button.addEventListener('click', async () => {
+			activateButton(markersContainer, button);
+			await loadMarker(marker.id);
+		});
+		markersContainer.appendChild(button);
+	}
+}
+
+async function loadMarker(markerId) {
+	try {
+		const response = await apiGet(`/api/markers/${encodeURIComponent(markerId)}`);
+		showMarkerDetails(response.marker);
+	} catch (error) {
+		hideMarkerDetails();
+		copyStatus.textContent = `Fehler: ${error.message}`;
+	}
+}
+
+function showMarkerDetails(marker) {
+	markerDetails.classList.remove('hidden');
+	markerTitle.textContent = marker.title;
+	markerVersion.textContent = String(marker.version);
+	markerDescription.textContent = marker.description;
+	markerString.value = marker.markerString;
+	copyStatus.textContent = '';
+
+	const markerUrl = `${window.location.origin}${window.location.pathname.replace(/index\.html$/, '')}marker.html?id=${encodeURIComponent(marker.id)}`;
+	directLink.href = markerUrl;
+	directLink.textContent = markerUrl;
+
+	copyBtn.onclick = async () => {
+		const ok = await copyText(marker.markerString);
+		copyStatus.textContent = ok ? 'Kopiert.' : 'Kopieren fehlgeschlagen.';
+	};
+}
+
+function hideMarkerDetails() {
+	markerDetails.classList.add('hidden');
+}
+
+function activateButton(container, activeButton) {
+	for (const child of container.querySelectorAll('button')) {
+		child.classList.remove('active');
+	}
+	activeButton.classList.add('active');
+}
+
+async function copyText(text) {
+	try {
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			await navigator.clipboard.writeText(text);
+			return true;
+		}
+	} catch {}
+
+	markerString.focus();
+	markerString.select();
+	markerString.setSelectionRange(0, markerString.value.length);
+
+	try {
+		return document.execCommand('copy');
+	} catch {
+		return false;
+	}
+}
+
+async function apiGet(path) {
+	const response = await fetch(`${API_BASE}${path}`);
+	const data = await response.json();
+
+	if (!response.ok) {
+		throw new Error(data.error || `HTTP ${response.status}`);
+	}
+
+	return data;
+}

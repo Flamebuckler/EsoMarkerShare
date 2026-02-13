@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0" />
+		<title>ESO Marker Detail</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 24px;
+				line-height: 1.4;
+				color: #111;
+			}
+			.panel {
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				padding: 16px;
+			}
+			textarea {
+				width: 100%;
+				box-sizing: border-box;
+			}
+			button {
+				cursor: pointer;
+				border: 1px solid #bbb;
+				background: #f9f9f9;
+				border-radius: 6px;
+				padding: 8px 10px;
+			}
+			.muted {
+				color: #666;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>ESO Marker Detail</h1>
+
+		<section class="panel">
+			<h2 id="title"></h2>
+			<p><strong>Version:</strong> <span id="version"></span></p>
+			<p id="description"></p>
+			<button
+				id="copyBtn"
+				type="button">
+				Marker kopieren
+			</button>
+			<span
+				id="copyStatus"
+				class="muted"></span>
+			<p></p>
+			<textarea
+				id="markerString"
+				rows="15"
+				readonly></textarea>
+		</section>
+
+		<script
+			src="../config.js"
+			defer></script>
+		<script>
+			const API_BASE = window.APP_CONFIG?.API_BASE || '';
+
+			if (!API_BASE) {
+				throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
+			}
+
+			const titleEl = document.getElementById('title');
+			const versionEl = document.getElementById('version');
+			const descriptionEl = document.getElementById('description');
+			const markerEl = document.getElementById('markerString');
+			const copyBtn = document.getElementById('copyBtn');
+			const copyStatus = document.getElementById('copyStatus');
+
+			const params = new URLSearchParams(window.location.search);
+			const markerId = params.get('id');
+
+			if (!markerId) {
+				titleEl.textContent = 'Kein Marker angegeben.';
+			} else {
+				loadMarker(markerId);
+			}
+
+			async function loadMarker(id) {
+				try {
+					const response = await fetch(`${API_BASE}/api/markers/${encodeURIComponent(id)}`);
+					const data = await response.json();
+
+					if (!response.ok) {
+						throw new Error(data.error || `HTTP ${response.status}`);
+					}
+
+					const marker = data.marker;
+					titleEl.textContent = marker.title;
+					versionEl.textContent = String(marker.version);
+					descriptionEl.textContent = marker.description;
+					markerEl.value = marker.markerString;
+
+					copyBtn.onclick = async () => {
+						const ok = await copyText(marker.markerString);
+						copyStatus.textContent = ok ? 'Kopiert.' : 'Kopieren fehlgeschlagen.';
+					};
+				} catch (error) {
+					titleEl.textContent = 'Fehler beim Laden.';
+					descriptionEl.textContent = error.message;
+				}
+			}
+
+			async function copyText(text) {
+				try {
+					if (navigator.clipboard && navigator.clipboard.writeText) {
+						await navigator.clipboard.writeText(text);
+						return true;
+					}
+				} catch {}
+
+				markerEl.focus();
+				markerEl.select();
+				markerEl.setSelectionRange(0, markerEl.value.length);
+
+				try {
+					return document.execCommand('copy');
+				} catch {
+					return false;
+				}
+			}
+		</script>
+	</body>
+</html>
