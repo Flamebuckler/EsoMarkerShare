@@ -13,9 +13,7 @@ const passwordInput = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
 const loginStatus = document.getElementById('loginStatus');
 
-const groupIdInput = document.getElementById('groupId');
 const groupNameInput = document.getElementById('groupName');
-const raidIdInput = document.getElementById('raidId');
 const raidNameInput = document.getElementById('raidName');
 const titleInput = document.getElementById('title');
 const descriptionInput = document.getElementById('description');
@@ -56,15 +54,9 @@ loginBtn.addEventListener('click', async () => {
 
 saveBtn.addEventListener('click', async () => {
 	const markerString = markerStringInput.value;
-	if (markerString.length < 800 || markerString.length > 3000) {
-		saveStatus.textContent = 'Marker-String muss 800 bis 3000 Zeichen lang sein.';
-		return;
-	}
 
 	const payload = {
-		groupId: groupIdInput.value.trim(),
 		groupName: groupNameInput.value.trim(),
-		raidId: raidIdInput.value.trim(),
 		raidName: raidNameInput.value.trim(),
 		title: titleInput.value.trim(),
 		description: descriptionInput.value.trim(),

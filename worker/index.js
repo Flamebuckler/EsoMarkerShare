@@ -97,36 +97,39 @@ export default {
 					return json({ error: validationError }, 400, origin, env);
 				}
 
-				const groupId = String(body.groupId).trim();
 				const groupName = String(body.groupName || '').trim();
-				const raidId = String(body.raidId).trim();
 				const raidName = String(body.raidName || '').trim();
 
 				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
-				const groupExists = groups.some((group) => group.id === groupId);
-				if (!groupExists) {
-					if (!groupName) {
-						return json(
-							{ error: 'Für neue Gruppen ist groupName erforderlich.' },
-							400,
-							origin,
-							env,
-						);
-					}
-					groups.push({ id: groupId, name: groupName });
+				let group = groups.find((item) => normalizeName(item.name) === normalizeName(groupName));
+				if (!group) {
+					const groupId = generateEntityId(
+						'grp',
+						groupName,
+						groups.map((item) => item.id),
+					);
+					group = { id: groupId, name: groupName };
+					groups.push(group);
 					await env.ESO_Marker_KV.put('groups', JSON.stringify(groups));
 				}
 
+				const groupId = group.id;
+
 				const raidKey = `group:${groupId}:raids`;
 				const raids = (await getJson(env.ESO_Marker_KV, raidKey)) || [];
-				const raidExists = raids.some((raid) => raid.id === raidId);
-				if (!raidExists) {
-					if (!raidName) {
-						return json({ error: 'Für neue Raids ist raidName erforderlich.' }, 400, origin, env);
-					}
-					raids.push({ id: raidId, name: raidName });
+				let raid = raids.find((item) => normalizeName(item.name) === normalizeName(raidName));
+				if (!raid) {
+					const raidId = generateEntityId(
+						'raid',
+						raidName,
+						raids.map((item) => item.id),
+					);
+					raid = { id: raidId, name: raidName };
+					raids.push(raid);
 					await env.ESO_Marker_KV.put(raidKey, JSON.stringify(raids));
 				}
+
+				const raidId = raid.id;
 
 				const latestVersionKey = `raid:${raidId}:latestVersion`;
 				const markerIdsKey = `raid:${raidId}:markerIds`;
@@ -219,7 +222,7 @@ async function safeJson(request) {
 }
 
 function validateMarkerInput(body) {
-	const required = ['groupId', 'raidId', 'title', 'description', 'markerString'];
+	const required = ['groupName', 'raidName', 'title', 'description', 'markerString'];
 	for (const key of required) {
 		const value = body[key];
 		if (typeof value !== 'string' || !value.trim()) {
@@ -227,12 +230,40 @@ function validateMarkerInput(body) {
 		}
 	}
 
-	const markerLength = body.markerString.length;
-	if (markerLength < 800 || markerLength > 3000) {
-		return 'markerString muss zwischen 800 und 3000 Zeichen lang sein.';
+	return '';
+}
+
+function normalizeName(value) {
+	return String(value || '')
+		.trim()
+		.toLowerCase();
+}
+
+function generateEntityId(prefix, name, existingIds) {
+	const usedIds = new Set(existingIds || []);
+	const base = slugify(name) || prefix;
+	let candidate = `${prefix}-${base}`;
+
+	if (!usedIds.has(candidate)) {
+		return candidate;
 	}
 
-	return '';
+	let counter = 2;
+	while (usedIds.has(`${candidate}-${counter}`)) {
+		counter += 1;
+	}
+
+	return `${candidate}-${counter}`;
+}
+
+function slugify(value) {
+	return String(value || '')
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 60);
 }
 
 async function getJson(kv, key) {
