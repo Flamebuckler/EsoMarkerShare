@@ -41,6 +41,9 @@
 			.muted {
 				color: #aeb7c6;
 			}
+			.highlight {
+				color: #dc4914;
+			}
 			.back-link {
 				display: inline-block;
 				margin-bottom: 12px;
@@ -53,7 +56,6 @@
 		</style>
 	</head>
 	<body>
-		<h1>ESO Marker Detail</h1>
 		<a
 			class="back-link"
 			href="./index.html"
@@ -61,6 +63,7 @@
 		>
 
 		<section class="panel">
+			<h1>Marker Details</h1>
 			<p><strong>Raidgruppe:</strong> <span id="groupName"></span></p>
 			<p><strong>Raid:</strong> <span id="raidName"></span></p>
 			<p><strong>Typ:</strong> <span id="type"></span></p>
@@ -72,7 +75,7 @@
 			</button>
 			<span
 				id="copyStatus"
-				class="muted"></span>
+				class="highlight"></span>
 			<p></p>
 			<textarea
 				id="markerString"

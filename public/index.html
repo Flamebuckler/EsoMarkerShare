@@ -36,6 +36,26 @@
 				flex-wrap: wrap;
 				gap: 8px;
 			}
+			.marker-rows {
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.marker-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.marker-row-label {
+				min-width: 110px;
+				font-weight: bold;
+				color: #d8deea;
+			}
+			.marker-row-versions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+			}
 			button {
 				cursor: pointer;
 				border: 1px solid #4a5466;
@@ -96,16 +116,19 @@
 				<h2>Marker</h2>
 				<div
 					id="markers"
-					class="list"></div>
+					class="marker-rows"></div>
 			</section>
 
 			<section
 				id="markerDetails"
 				class="panel hidden">
+				<h2>Marker Details</h2>
+
 				<p><strong>Raidgruppe:</strong> <span id="markerGroupName"></span></p>
 				<p><strong>Raid:</strong> <span id="markerRaidName"></span></p>
 				<p><strong>Typ:</strong> <span id="markerType"></span></p>
 				<p><strong>Version:</strong> <span id="markerVersion"></span></p>
+
 				<div class="row">
 					<button
 						id="copyBtn"

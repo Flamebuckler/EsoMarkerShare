@@ -20,6 +20,7 @@ const directLink = document.getElementById('directLink');
 
 let selectedGroupId = '';
 let selectedRaidId = '';
+const MARKER_TYPE_ROWS = ['Akamatsu', 'Breadcrumbs', 'Elms'];
 
 init();
 
@@ -111,16 +112,60 @@ function renderMarkers(markers) {
 		return;
 	}
 
+	const grouped = new Map(MARKER_TYPE_ROWS.map((type) => [type, []]));
+
 	for (const marker of markers) {
-		const button = document.createElement('button');
-		button.type = 'button';
-		button.textContent = marker.type ? `v${marker.version} · ${marker.type}` : `v${marker.version}`;
-		button.addEventListener('click', async () => {
-			activateButton(markersContainer, button);
-			await loadMarker(marker.id);
-		});
-		markersContainer.appendChild(button);
+		const normalized = normalizeTypeForRow(marker.type);
+		if (!grouped.has(normalized)) {
+			continue;
+		}
+		grouped.get(normalized).push(marker);
 	}
+
+	for (const rowType of MARKER_TYPE_ROWS) {
+		const row = document.createElement('div');
+		row.classList.add('marker-row');
+
+		const label = document.createElement('div');
+		label.classList.add('marker-row-label');
+		label.textContent = rowType;
+		row.appendChild(label);
+
+		const versions = document.createElement('div');
+		versions.classList.add('marker-row-versions');
+		const rowMarkers = grouped.get(rowType) || [];
+
+		if (!rowMarkers.length) {
+			const empty = document.createElement('span');
+			empty.classList.add('muted');
+			empty.textContent = '—';
+			versions.appendChild(empty);
+		} else {
+			for (const marker of rowMarkers) {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.textContent = `v${marker.version}`;
+				button.addEventListener('click', async () => {
+					activateButton(markersContainer, button);
+					await loadMarker(marker.id);
+				});
+				versions.appendChild(button);
+			}
+		}
+
+		row.appendChild(versions);
+		markersContainer.appendChild(row);
+	}
+}
+
+function normalizeTypeForRow(type) {
+	const value = String(type || '')
+		.trim()
+		.toLowerCase();
+	if (value === 'akamatsu') return 'Akamatsu';
+	if (value === 'breadcrumbs') return 'Breadcrumbs';
+	if (value === 'elms') return 'Elms';
+	return '';
 }
 
 async function loadMarker(markerId) {
