@@ -1,5 +1,5 @@
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
-const SUPPORTED_MARKER_TYPES = ['Akamatsu Marker', 'Elms', 'Breadcrumbs'];
+const SUPPORTED_MARKER_TYPES = ['Akamatsu', 'Elms', 'Breadcrumbs'];
 
 export default {
 	async fetch(request, env) {
@@ -80,7 +80,7 @@ export default {
 				if (!marker) {
 					return json({ error: 'Marker nicht gefunden.' }, 404, origin, env);
 				}
-				return json({ marker: mapMarkerType(marker) }, 200, origin, env);
+				return json({ marker }, 200, origin, env);
 			}
 
 			if (markerMatch && method === 'DELETE') {
@@ -95,7 +95,13 @@ export default {
 					return json({ error: 'Marker nicht gefunden.' }, 404, origin, env);
 				}
 
-				await deleteMarkerById(env.ESO_Marker_KV, markerId, marker.groupId, marker.raidId);
+				await deleteMarkerById(
+					env.ESO_Marker_KV,
+					markerId,
+					marker.groupId,
+					marker.raidId,
+					marker.type,
+				);
 				return json({ deleted: true }, 200, origin, env);
 			}
 
@@ -132,7 +138,8 @@ export default {
 					await env.ESO_Marker_KV.put(groupRaidIdsKey, JSON.stringify(groupRaidIds));
 				}
 
-				const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
+				const markerType = String(body.type || '').trim();
+				const latestVersionKey = getTypeLatestVersionKey(groupId, raidId, markerType);
 				const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
 				const latestVersionRaw = await env.ESO_Marker_KV.get(latestVersionKey);
 				const latestVersion = Number(latestVersionRaw || 0);
@@ -143,7 +150,7 @@ export default {
 					id: markerId,
 					groupId,
 					raidId,
-					type: normalizeMarkerType(body.type),
+					type: markerType,
 					version: newVersion,
 					markerString: String(body.markerString),
 					createdAt: new Date().toISOString(),
@@ -350,25 +357,11 @@ function validateMarkerInput(body) {
 		}
 	}
 
-	if (!SUPPORTED_MARKER_TYPES.includes(normalizeMarkerType(body.type))) {
+	if (!SUPPORTED_MARKER_TYPES.includes(String(body.type || '').trim())) {
 		return `Ungültiger type. Erlaubt: ${SUPPORTED_MARKER_TYPES.join(', ')}`;
 	}
 
 	return '';
-}
-
-function normalizeMarkerType(type) {
-	const value = String(type || '').trim();
-	if (value === 'Akamatsu') return 'Akamatsu Marker';
-	return value;
-}
-
-function mapMarkerType(marker) {
-	if (!marker) return marker;
-	return {
-		...marker,
-		type: normalizeMarkerType(marker.type),
-	};
 }
 
 function normalizeName(value) {
@@ -433,7 +426,7 @@ async function getMarkerSummariesForPair(kv, groupId, raidId) {
 				id: marker.id,
 				groupId: marker.groupId,
 				raidId: marker.raidId,
-				type: normalizeMarkerType(marker.type),
+				type: marker.type || '',
 				version: marker.version,
 				createdAt: marker.createdAt,
 			};
@@ -461,7 +454,7 @@ async function getAllMarkerSummaries(kv) {
 				id: marker.id,
 				groupId: marker.groupId,
 				raidId: marker.raidId,
-				type: normalizeMarkerType(marker.type),
+				type: marker.type || '',
 				version: marker.version,
 				createdAt: marker.createdAt,
 			};
@@ -473,11 +466,15 @@ async function getAllMarkerSummaries(kv) {
 		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-async function deleteMarkerById(kv, markerId, groupId, raidId) {
+function getTypeLatestVersionKey(groupId, raidId, markerType) {
+	return `pair:${groupId}:${raidId}:type:${encodeURIComponent(String(markerType || '').trim())}:latestVersion`;
+}
+
+async function deleteMarkerById(kv, markerId, groupId, raidId, markerType) {
 	await kv.delete(`marker:${markerId}`);
 
 	const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
-	const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
+	const latestVersionKey = getTypeLatestVersionKey(groupId, raidId, markerType);
 	const markerIds = (await getJson(kv, markerIdsKey)) || [];
 	const nextMarkerIds = markerIds.filter((id) => id !== markerId);
 
@@ -486,20 +483,26 @@ async function deleteMarkerById(kv, markerId, groupId, raidId) {
 		const nextVersions = await Promise.all(
 			nextMarkerIds.map(async (id) => {
 				const marker = await getJson(kv, `marker:${id}`);
-				return marker && Number.isFinite(marker.version) ? marker.version : 0;
+				if (!marker) return 0;
+				if (String(marker.type || '').trim() !== String(markerType || '').trim()) return 0;
+				return Number.isFinite(marker.version) ? marker.version : 0;
 			}),
 		);
 		const maxVersion = Math.max(...nextVersions, 0);
-		await kv.put(latestVersionKey, String(maxVersion));
+		if (maxVersion > 0) {
+			await kv.put(latestVersionKey, String(maxVersion));
+		} else {
+			await kv.delete(latestVersionKey);
+		}
 	} else {
 		await kv.delete(markerIdsKey);
-		await kv.delete(latestVersionKey);
+		await deleteKeysByPrefix(kv, `pair:${groupId}:${raidId}:type:`);
+		await kv.delete(`pair:${groupId}:${raidId}:latestVersion`);
 	}
 }
 
 async function deletePairData(kv, groupId, raidId) {
 	const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
-	const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
 	const markerIds = (await getJson(kv, markerIdsKey)) || [];
 
 	for (const markerId of markerIds) {
@@ -507,7 +510,20 @@ async function deletePairData(kv, groupId, raidId) {
 	}
 
 	await kv.delete(markerIdsKey);
-	await kv.delete(latestVersionKey);
+	await deleteKeysByPrefix(kv, `pair:${groupId}:${raidId}:type:`);
+	await kv.delete(`pair:${groupId}:${raidId}:latestVersion`);
+}
+
+async function deleteKeysByPrefix(kv, prefix) {
+	let cursor;
+
+	do {
+		const result = await kv.list({ cursor, prefix });
+		for (const keyInfo of result.keys) {
+			await kv.delete(keyInfo.name);
+		}
+		cursor = result.list_complete ? undefined : result.cursor;
+	} while (cursor);
 }
 
 async function requireAdmin(request, env) {
