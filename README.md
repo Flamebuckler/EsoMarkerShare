@@ -1,28 +1,19 @@
 # ESO Marker Share
 
-ESO Marker Share ist eine Webanwendung zum Teilen von Marker-Strings für Raidgruppen in The Elder Scrolls Online.
+## Summary
 
-## Funktionsumfang
+ESO Marker Share is a lightweight web app for sharing and maintaining ESO marker strings used by raid groups in The Elder Scrolls Online.
 
-- Auf der Hauptseite werden alle Raidgruppen angezeigt.
-- Beim Öffnen einer Raidgruppe erscheinen die zugehörigen Raids.
-- Für jeden Raid werden alle Marker-Versionen angezeigt.
-- Jeder Marker enthält:
-  - Titel
-  - Beschreibung
-  - Version
-  - Marker-String
-- Der Marker-String wird in einer Textbox mit fester Höhe angezeigt und kann direkt kopiert werden.
-- Für jeden Marker gibt es einen Direktlink.
-- Beim Öffnen eines Direktlinks wird nur dieser eine Marker angezeigt und kann kopiert werden.
+## Purpose
 
-## Versionierung
+The project is designed to make marker management simple and reliable for teams:
 
-- Marker werden versioniert gespeichert.
-- Änderungen an einem Marker erzeugen eine neue Version.
-- Ältere Versionen bleiben weiterhin verfügbar.
+- Keep marker content organized by raid group and raid.
+- Track marker changes through version history.
+- Let players quickly open and copy the exact marker they need.
 
-## Rollen
+## What it provides
 
-- Öffentliche Besucher können Marker ansehen und kopieren.
-- Nur berechtigte Admins können neue Marker anlegen.
+- A public view to browse raid groups, raids, and marker versions.
+- A direct link for each marker to share a single version instantly.
+- A dedicated admin workflow to create and maintain marker data.
