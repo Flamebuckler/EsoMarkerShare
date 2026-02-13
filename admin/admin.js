@@ -341,8 +341,8 @@ function renderMarkerList(markers, emptyLabel) {
 
 function getMarkerDetailUrl(markerId) {
 	const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-	const markerPath = isLocalHost ? '/public/marker.html' : '/marker.html';
-	const url = new URL(markerPath, window.location.origin);
+	const markerPath = isLocalHost ? '../public/marker.html' : '../marker.html';
+	const url = new URL(markerPath, window.location.href);
 	url.searchParams.set('id', markerId);
 	return url.toString();
 }
