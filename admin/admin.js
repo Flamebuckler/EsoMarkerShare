@@ -18,10 +18,12 @@ const loginStatus = document.getElementById('loginStatus');
 const newGroupNameInput = document.getElementById('newGroupName');
 const createGroupBtn = document.getElementById('createGroupBtn');
 const groupStatus = document.getElementById('groupStatus');
+const groupList = document.getElementById('groupList');
 
 const newRaidNameInput = document.getElementById('newRaidName');
 const createRaidBtn = document.getElementById('createRaidBtn');
 const raidStatus = document.getElementById('raidStatus');
+const raidList = document.getElementById('raidList');
 
 const groupSelect = document.getElementById('groupSelect');
 const raidSelect = document.getElementById('raidSelect');
@@ -185,10 +187,32 @@ async function loadSelectionData() {
 			apiGet('/api/groups'),
 			apiGet('/api/raids'),
 		]);
-		renderSelect(groupSelect, groupsData.groups || [], 'Keine Raidgruppen vorhanden');
-		renderSelect(raidSelect, raidsData.raids || [], 'Keine Raids vorhanden');
+		const groups = groupsData.groups || [];
+		const raids = raidsData.raids || [];
+
+		renderSelect(groupSelect, groups, 'Keine Raidgruppen vorhanden');
+		renderSelect(raidSelect, raids, 'Keine Raids vorhanden');
+		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden');
+		renderEntityList(raidList, raids, 'Keine Raids vorhanden');
 	} catch (error) {
 		saveStatus.textContent = `Fehler beim Laden der Listen: ${error.message}`;
+	}
+}
+
+function renderEntityList(listElement, items, emptyLabel) {
+	listElement.innerHTML = '';
+
+	if (!items.length) {
+		const emptyItem = document.createElement('li');
+		emptyItem.textContent = emptyLabel;
+		listElement.appendChild(emptyItem);
+		return;
+	}
+
+	for (const item of items) {
+		const listItem = document.createElement('li');
+		listItem.textContent = item.name;
+		listElement.appendChild(listItem);
 	}
 }
 
