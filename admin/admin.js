@@ -32,12 +32,24 @@ const descriptionInput = document.getElementById('description');
 const markerStringInput = document.getElementById('markerString');
 const saveBtn = document.getElementById('saveBtn');
 const saveStatus = document.getElementById('saveStatus');
+const markerList = document.getElementById('markerList');
+
+let groupsCache = [];
+let raidsCache = [];
 
 const token = localStorage.getItem(TOKEN_KEY);
 if (token) {
 	showAdmin();
 	loadSelectionData();
 }
+
+groupSelect.addEventListener('change', () => {
+	loadMarkerList();
+});
+
+raidSelect.addEventListener('change', () => {
+	loadMarkerList();
+});
 
 loginBtn.addEventListener('click', async () => {
 	loginStatus.textContent = 'Login läuft...';
@@ -161,6 +173,7 @@ saveBtn.addEventListener('click', async () => {
 
 		saveStatus.textContent = `Gespeichert: Marker ${data.marker.id}, Version v${data.marker.version}`;
 		markerStringInput.value = '';
+		await loadMarkerList();
 	} catch (error) {
 		saveStatus.textContent = `Speichern fehlgeschlagen: ${error.message}`;
 	}
@@ -189,14 +202,71 @@ async function loadSelectionData() {
 		]);
 		const groups = groupsData.groups || [];
 		const raids = raidsData.raids || [];
+		groupsCache = groups;
+		raidsCache = raids;
 
 		renderSelect(groupSelect, groups, 'Keine Raidgruppen vorhanden');
 		renderSelect(raidSelect, raids, 'Keine Raids vorhanden');
 		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden');
 		renderEntityList(raidList, raids, 'Keine Raids vorhanden');
+		await loadMarkerList();
 	} catch (error) {
 		saveStatus.textContent = `Fehler beim Laden der Listen: ${error.message}`;
 	}
+}
+
+async function loadMarkerList() {
+	const groupId = groupSelect.value;
+	const raidId = raidSelect.value;
+
+	if (!groupId && !raidId) {
+		try {
+			const data = await apiGet('/api/markers');
+			renderMarkerList(data.markers || [], 'Keine Marker vorhanden');
+		} catch (error) {
+			renderMarkerList([], `Fehler beim Laden: ${error.message}`);
+		}
+		return;
+	}
+
+	if (!groupId || !raidId) {
+		renderMarkerList([], 'Bitte entweder beide Filter auswählen oder beide leer lassen.');
+		return;
+	}
+
+	try {
+		const data = await apiGet(
+			`/api/groups/${encodeURIComponent(groupId)}/raids/${encodeURIComponent(raidId)}/markers`,
+		);
+		renderMarkerList(data.markers || [], 'Keine Marker vorhanden');
+	} catch (error) {
+		renderMarkerList([], `Fehler beim Laden: ${error.message}`);
+	}
+}
+
+function renderMarkerList(markers, emptyLabel) {
+	markerList.innerHTML = '';
+
+	if (!markers.length) {
+		const emptyItem = document.createElement('li');
+		emptyItem.textContent = emptyLabel;
+		markerList.appendChild(emptyItem);
+		return;
+	}
+
+	for (const marker of markers) {
+		const listItem = document.createElement('li');
+		const groupName = getEntityName(groupsCache, marker.groupId);
+		const raidName = getEntityName(raidsCache, marker.raidId);
+		listItem.textContent = `v${marker.version} - ${marker.title} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		markerList.appendChild(listItem);
+	}
+}
+
+function getEntityName(items, id) {
+	if (!id) return 'Unbekannt';
+	const match = items.find((item) => item.id === id);
+	return match ? match.name : id;
 }
 
 function renderEntityList(listElement, items, emptyLabel) {
@@ -219,11 +289,14 @@ function renderEntityList(listElement, items, emptyLabel) {
 function renderSelect(selectElement, items, emptyLabel) {
 	selectElement.innerHTML = '';
 
+	const placeholderOption = document.createElement('option');
+	placeholderOption.value = '';
+	placeholderOption.textContent = 'Bitte auswählen';
+	placeholderOption.selected = true;
+	selectElement.appendChild(placeholderOption);
+
 	if (!items.length) {
-		const option = document.createElement('option');
-		option.value = '';
-		option.textContent = emptyLabel;
-		selectElement.appendChild(option);
+		placeholderOption.textContent = emptyLabel;
 		return;
 	}
 

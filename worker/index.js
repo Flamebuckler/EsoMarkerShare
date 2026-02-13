@@ -52,6 +52,11 @@ export default {
 				return json({ raids }, 200, origin, env);
 			}
 
+			if (path === '/api/markers' && method === 'GET') {
+				const markers = await getAllMarkerSummaries(env.ESO_Marker_KV);
+				return json({ markers }, 200, origin, env);
+			}
+
 			const groupsRaidsMatch = path.match(/^\/api\/groups\/([^/]+)\/raids$/);
 			if (groupsRaidsMatch && method === 'GET') {
 				const groupId = decodeURIComponent(groupsRaidsMatch[1]);
@@ -75,6 +80,22 @@ export default {
 					return json({ error: 'Marker nicht gefunden.' }, 404, origin, env);
 				}
 				return json({ marker }, 200, origin, env);
+			}
+
+			if (markerMatch && method === 'DELETE') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const markerId = decodeURIComponent(markerMatch[1]);
+				const marker = await getJson(env.ESO_Marker_KV, `marker:${markerId}`);
+				if (!marker) {
+					return json({ error: 'Marker nicht gefunden.' }, 404, origin, env);
+				}
+
+				await deleteMarkerById(env.ESO_Marker_KV, markerId, marker.groupId, marker.raidId);
+				return json({ deleted: true }, 200, origin, env);
 			}
 
 			if (path === '/api/markers' && method === 'POST') {
@@ -169,6 +190,32 @@ export default {
 				return json({ group, created: true }, 201, origin, env);
 			}
 
+			const groupDeleteMatch = path.match(/^\/api\/groups\/([^/]+)$/);
+			if (groupDeleteMatch && method === 'DELETE') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const groupId = decodeURIComponent(groupDeleteMatch[1]);
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				if (!groups.some((group) => group.id === groupId)) {
+					return json({ error: 'Raidgruppe nicht gefunden.' }, 404, origin, env);
+				}
+
+				const groupRaidIdsKey = `group:${groupId}:raidIds`;
+				const raidIds = (await getJson(env.ESO_Marker_KV, groupRaidIdsKey)) || [];
+				for (const raidId of raidIds) {
+					await deletePairData(env.ESO_Marker_KV, groupId, raidId);
+				}
+
+				const nextGroups = groups.filter((group) => group.id !== groupId);
+				await env.ESO_Marker_KV.put('groups', JSON.stringify(nextGroups));
+				await env.ESO_Marker_KV.delete(groupRaidIdsKey);
+
+				return json({ deleted: true }, 200, origin, env);
+			}
+
 			if (path === '/api/raids' && method === 'POST') {
 				const authResult = await requireAdmin(request, env);
 				if (!authResult.ok) {
@@ -197,6 +244,40 @@ export default {
 				await env.ESO_Marker_KV.put('raids', JSON.stringify(raids));
 
 				return json({ raid, created: true }, 201, origin, env);
+			}
+
+			const raidDeleteMatch = path.match(/^\/api\/raids\/([^/]+)$/);
+			if (raidDeleteMatch && method === 'DELETE') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const raidId = decodeURIComponent(raidDeleteMatch[1]);
+				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
+				if (!raids.some((raid) => raid.id === raidId)) {
+					return json({ error: 'Raid nicht gefunden.' }, 404, origin, env);
+				}
+
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				for (const group of groups) {
+					const groupRaidIdsKey = `group:${group.id}:raidIds`;
+					const raidIds = (await getJson(env.ESO_Marker_KV, groupRaidIdsKey)) || [];
+					if (!raidIds.includes(raidId)) continue;
+
+					await deletePairData(env.ESO_Marker_KV, group.id, raidId);
+					const nextRaidIds = raidIds.filter((id) => id !== raidId);
+					if (nextRaidIds.length) {
+						await env.ESO_Marker_KV.put(groupRaidIdsKey, JSON.stringify(nextRaidIds));
+					} else {
+						await env.ESO_Marker_KV.delete(groupRaidIdsKey);
+					}
+				}
+
+				const nextRaids = raids.filter((raid) => raid.id !== raidId);
+				await env.ESO_Marker_KV.put('raids', JSON.stringify(nextRaids));
+
+				return json({ deleted: true }, 200, origin, env);
 			}
 
 			return json({ error: 'Route nicht gefunden.' }, 404, origin, env);
@@ -332,6 +413,8 @@ async function getMarkerSummariesForPair(kv, groupId, raidId) {
 			if (marker.groupId !== groupId || marker.raidId !== raidId) return null;
 			return {
 				id: marker.id,
+				groupId: marker.groupId,
+				raidId: marker.raidId,
 				version: marker.version,
 				title: marker.title,
 				description: marker.description,
@@ -341,6 +424,74 @@ async function getMarkerSummariesForPair(kv, groupId, raidId) {
 	);
 
 	return markers.filter(Boolean);
+}
+
+async function getAllMarkerSummaries(kv) {
+	const keyInfos = [];
+	let cursor;
+
+	do {
+		const result = await kv.list({ cursor, prefix: 'marker:' });
+		keyInfos.push(...result.keys);
+		cursor = result.list_complete ? undefined : result.cursor;
+	} while (cursor);
+
+	const markers = await Promise.all(
+		keyInfos.map(async (keyInfo) => {
+			const marker = await getJson(kv, keyInfo.name);
+			if (!marker) return null;
+			return {
+				id: marker.id,
+				groupId: marker.groupId,
+				raidId: marker.raidId,
+				version: marker.version,
+				title: marker.title,
+				description: marker.description,
+				createdAt: marker.createdAt,
+			};
+		}),
+	);
+
+	return markers
+		.filter(Boolean)
+		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+async function deleteMarkerById(kv, markerId, groupId, raidId) {
+	await kv.delete(`marker:${markerId}`);
+
+	const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
+	const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
+	const markerIds = (await getJson(kv, markerIdsKey)) || [];
+	const nextMarkerIds = markerIds.filter((id) => id !== markerId);
+
+	if (nextMarkerIds.length) {
+		await kv.put(markerIdsKey, JSON.stringify(nextMarkerIds));
+		const nextVersions = await Promise.all(
+			nextMarkerIds.map(async (id) => {
+				const marker = await getJson(kv, `marker:${id}`);
+				return marker && Number.isFinite(marker.version) ? marker.version : 0;
+			}),
+		);
+		const maxVersion = Math.max(...nextVersions, 0);
+		await kv.put(latestVersionKey, String(maxVersion));
+	} else {
+		await kv.delete(markerIdsKey);
+		await kv.delete(latestVersionKey);
+	}
+}
+
+async function deletePairData(kv, groupId, raidId) {
+	const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
+	const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
+	const markerIds = (await getJson(kv, markerIdsKey)) || [];
+
+	for (const markerId of markerIds) {
+		await kv.delete(`marker:${markerId}`);
+	}
+
+	await kv.delete(markerIdsKey);
+	await kv.delete(latestVersionKey);
 }
 
 async function requireAdmin(request, env) {
