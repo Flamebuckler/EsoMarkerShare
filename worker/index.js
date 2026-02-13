@@ -50,29 +50,16 @@ export default {
 			const groupsRaidsMatch = path.match(/^\/api\/groups\/([^/]+)\/raids$/);
 			if (groupsRaidsMatch && method === 'GET') {
 				const groupId = decodeURIComponent(groupsRaidsMatch[1]);
-				const raids = (await getJson(env.ESO_Marker_KV, `group:${groupId}:raids`)) || [];
+				const raids = await getRaidsForGroup(env.ESO_Marker_KV, groupId);
 				return json({ raids }, 200, origin, env);
 			}
 
-			const raidMarkersMatch = path.match(/^\/api\/raids\/([^/]+)\/markers$/);
-			if (raidMarkersMatch && method === 'GET') {
-				const raidId = decodeURIComponent(raidMarkersMatch[1]);
-				const markerIds = (await getJson(env.ESO_Marker_KV, `raid:${raidId}:markerIds`)) || [];
-				const markers = await Promise.all(
-					markerIds.map(async (id) => {
-						const marker = await getJson(env.ESO_Marker_KV, `marker:${id}`);
-						if (!marker) return null;
-						return {
-							id: marker.id,
-							version: marker.version,
-							title: marker.title,
-							description: marker.description,
-							createdAt: marker.createdAt,
-						};
-					}),
-				);
-
-				return json({ markers: markers.filter(Boolean) }, 200, origin, env);
+			const groupRaidMarkersMatch = path.match(/^\/api\/groups\/([^/]+)\/raids\/([^/]+)\/markers$/);
+			if (groupRaidMarkersMatch && method === 'GET') {
+				const groupId = decodeURIComponent(groupRaidMarkersMatch[1]);
+				const raidId = decodeURIComponent(groupRaidMarkersMatch[2]);
+				const markers = await getMarkerSummariesForPair(env.ESO_Marker_KV, groupId, raidId);
+				return json({ markers }, 200, origin, env);
 			}
 
 			const markerMatch = path.match(/^\/api\/markers\/([^/]+)$/);
@@ -115,8 +102,7 @@ export default {
 
 				const groupId = group.id;
 
-				const raidKey = `group:${groupId}:raids`;
-				const raids = (await getJson(env.ESO_Marker_KV, raidKey)) || [];
+				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
 				let raid = raids.find((item) => normalizeName(item.name) === normalizeName(raidName));
 				if (!raid) {
 					const raidId = generateEntityId(
@@ -126,13 +112,20 @@ export default {
 					);
 					raid = { id: raidId, name: raidName };
 					raids.push(raid);
-					await env.ESO_Marker_KV.put(raidKey, JSON.stringify(raids));
+					await env.ESO_Marker_KV.put('raids', JSON.stringify(raids));
 				}
 
 				const raidId = raid.id;
 
-				const latestVersionKey = `raid:${raidId}:latestVersion`;
-				const markerIdsKey = `raid:${raidId}:markerIds`;
+				const groupRaidIdsKey = `group:${groupId}:raidIds`;
+				const groupRaidIds = (await getJson(env.ESO_Marker_KV, groupRaidIdsKey)) || [];
+				if (!groupRaidIds.includes(raidId)) {
+					groupRaidIds.push(raidId);
+					await env.ESO_Marker_KV.put(groupRaidIdsKey, JSON.stringify(groupRaidIds));
+				}
+
+				const latestVersionKey = `pair:${groupId}:${raidId}:latestVersion`;
+				const markerIdsKey = `pair:${groupId}:${raidId}:markerIds`;
 				const latestVersionRaw = await env.ESO_Marker_KV.get(latestVersionKey);
 				const latestVersion = Number(latestVersionRaw || 0);
 				const newVersion = latestVersion + 1;
@@ -270,6 +263,38 @@ async function getJson(kv, key) {
 	const raw = await kv.get(key);
 	if (!raw) return null;
 	return JSON.parse(raw);
+}
+
+async function getRaidsForGroup(kv, groupId) {
+	const raidIds = await getJson(kv, `group:${groupId}:raidIds`);
+	if (!Array.isArray(raidIds)) {
+		return [];
+	}
+
+	const allRaids = (await getJson(kv, 'raids')) || [];
+	const raidMap = new Map(allRaids.map((raid) => [raid.id, raid]));
+	return raidIds.map((raidId) => raidMap.get(raidId)).filter(Boolean);
+}
+
+async function getMarkerSummariesForPair(kv, groupId, raidId) {
+	const markerIds = (await getJson(kv, `pair:${groupId}:${raidId}:markerIds`)) || [];
+
+	const markers = await Promise.all(
+		markerIds.map(async (id) => {
+			const marker = await getJson(kv, `marker:${id}`);
+			if (!marker) return null;
+			if (marker.groupId !== groupId || marker.raidId !== raidId) return null;
+			return {
+				id: marker.id,
+				version: marker.version,
+				title: marker.title,
+				description: marker.description,
+				createdAt: marker.createdAt,
+			};
+		}),
+	);
+
+	return markers.filter(Boolean);
 }
 
 async function requireAdmin(request, env) {

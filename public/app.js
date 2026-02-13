@@ -83,17 +83,19 @@ function renderRaids(raids) {
 			selectedRaidId = raid.id;
 			activateButton(raidsContainer, button);
 			hideMarkerDetails();
-			await loadMarkers(raid.id);
+			await loadMarkers(selectedGroupId, raid.id);
 		});
 		raidsContainer.appendChild(button);
 	}
 }
 
-async function loadMarkers(raidId) {
+async function loadMarkers(groupId, raidId) {
 	markersContainer.innerHTML = 'Lädt...';
 
 	try {
-		const response = await apiGet(`/api/raids/${encodeURIComponent(raidId)}/markers`);
+		const response = await apiGet(
+			`/api/groups/${encodeURIComponent(groupId)}/raids/${encodeURIComponent(raidId)}/markers`,
+		);
 		renderMarkers(response.markers || []);
 	} catch (error) {
 		markersContainer.textContent = `Fehler: ${error.message}`;
