@@ -143,8 +143,6 @@ export default {
 					groupId,
 					raidId,
 					version: newVersion,
-					title: String(body.title).trim(),
-					description: String(body.description).trim(),
 					markerString: String(body.markerString),
 					createdAt: new Date().toISOString(),
 					createdBy: authResult.payload.sub,
@@ -342,7 +340,7 @@ async function safeJson(request) {
 }
 
 function validateMarkerInput(body) {
-	const required = ['groupId', 'raidId', 'title', 'description', 'markerString'];
+	const required = ['groupId', 'raidId', 'markerString'];
 	for (const key of required) {
 		const value = body[key];
 		if (typeof value !== 'string' || !value.trim()) {
@@ -416,8 +414,6 @@ async function getMarkerSummariesForPair(kv, groupId, raidId) {
 				groupId: marker.groupId,
 				raidId: marker.raidId,
 				version: marker.version,
-				title: marker.title,
-				description: marker.description,
 				createdAt: marker.createdAt,
 			};
 		}),
@@ -445,8 +441,6 @@ async function getAllMarkerSummaries(kv) {
 				groupId: marker.groupId,
 				raidId: marker.raidId,
 				version: marker.version,
-				title: marker.title,
-				description: marker.description,
 				createdAt: marker.createdAt,
 			};
 		}),

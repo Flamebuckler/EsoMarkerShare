@@ -9,9 +9,7 @@ const raidsContainer = document.getElementById('raids');
 const markersContainer = document.getElementById('markers');
 
 const markerDetails = document.getElementById('markerDetails');
-const markerTitle = document.getElementById('markerTitle');
 const markerVersion = document.getElementById('markerVersion');
-const markerDescription = document.getElementById('markerDescription');
 const markerString = document.getElementById('markerString');
 const copyBtn = document.getElementById('copyBtn');
 const copyStatus = document.getElementById('copyStatus');
@@ -113,7 +111,7 @@ function renderMarkers(markers) {
 	for (const marker of markers) {
 		const button = document.createElement('button');
 		button.type = 'button';
-		button.textContent = `v${marker.version} - ${marker.title}`;
+		button.textContent = `v${marker.version}`;
 		button.addEventListener('click', async () => {
 			activateButton(markersContainer, button);
 			await loadMarker(marker.id);
@@ -134,9 +132,7 @@ async function loadMarker(markerId) {
 
 function showMarkerDetails(marker) {
 	markerDetails.classList.remove('hidden');
-	markerTitle.textContent = marker.title;
 	markerVersion.textContent = String(marker.version);
-	markerDescription.textContent = marker.description;
 	markerString.value = marker.markerString;
 	copyStatus.textContent = '';
 

@@ -28,8 +28,6 @@ const raidList = document.getElementById('raidList');
 
 const groupSelect = document.getElementById('groupSelect');
 const raidSelect = document.getElementById('raidSelect');
-const titleInput = document.getElementById('title');
-const descriptionInput = document.getElementById('description');
 const markerStringInput = document.getElementById('markerString');
 const saveBtn = document.getElementById('saveBtn');
 const saveStatus = document.getElementById('saveStatus');
@@ -143,13 +141,16 @@ saveBtn.addEventListener('click', async () => {
 	const payload = {
 		groupId: groupSelect.value,
 		raidId: raidSelect.value,
-		title: titleInput.value.trim(),
-		description: descriptionInput.value.trim(),
 		markerString,
 	};
 
 	if (!payload.groupId || !payload.raidId) {
 		saveStatus.textContent = 'Bitte zuerst eine Raidgruppe und einen Raid auswählen.';
+		return;
+	}
+
+	if (!payload.markerString.trim()) {
+		saveStatus.textContent = 'markerString ist erforderlich.';
 		return;
 	}
 
@@ -240,26 +241,18 @@ async function loadMarkerList() {
 	const groupId = groupSelect.value;
 	const raidId = raidSelect.value;
 
-	if (!groupId && !raidId) {
-		try {
-			const data = await apiGet('/api/markers');
-			renderMarkerList(data.markers || [], 'Keine Marker vorhanden');
-		} catch (error) {
-			renderMarkerList([], `Fehler beim Laden: ${error.message}`);
-		}
-		return;
-	}
-
-	if (!groupId || !raidId) {
-		renderMarkerList([], 'Bitte entweder beide Filter auswählen oder beide leer lassen.');
-		return;
-	}
-
 	try {
-		const data = await apiGet(
-			`/api/groups/${encodeURIComponent(groupId)}/raids/${encodeURIComponent(raidId)}/markers`,
-		);
-		renderMarkerList(data.markers || [], 'Keine Marker vorhanden');
+		const data = await apiGet('/api/markers');
+		let markers = data.markers || [];
+
+		if (groupId) {
+			markers = markers.filter((marker) => marker.groupId === groupId);
+		}
+		if (raidId) {
+			markers = markers.filter((marker) => marker.raidId === raidId);
+		}
+
+		renderMarkerList(markers, 'Keine Marker vorhanden');
 	} catch (error) {
 		renderMarkerList([], `Fehler beim Laden: ${error.message}`);
 	}
@@ -280,7 +273,7 @@ function renderMarkerList(markers, emptyLabel) {
 		const groupName = getEntityName(groupsCache, marker.groupId);
 		const raidName = getEntityName(raidsCache, marker.raidId);
 		const text = document.createElement('span');
-		text.textContent = `v${marker.version} - ${marker.title} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		text.textContent = `v${marker.version} (Raidgruppe: ${groupName}, Raid: ${raidName})`;
 
 		const deleteButton = document.createElement('button');
 		deleteButton.type = 'button';
@@ -289,11 +282,11 @@ function renderMarkerList(markers, emptyLabel) {
 		deleteButton.title = 'Löschen';
 		deleteButton.setAttribute('aria-label', 'Löschen');
 		deleteButton.addEventListener('click', async () => {
-			if (!confirm(`Marker wirklich löschen?\n\n${marker.title} (v${marker.version})`)) return;
+			if (!confirm(`Marker wirklich löschen?\n\nVersion v${marker.version}`)) return;
 			try {
 				const activeToken = getRequiredToken();
 				await apiDelete(`/api/markers/${encodeURIComponent(marker.id)}`, activeToken);
-				saveStatus.textContent = `Marker gelöscht: ${marker.title} (v${marker.version})`;
+				saveStatus.textContent = `Marker gelöscht: v${marker.version}`;
 				await loadMarkerList();
 			} catch (error) {
 				saveStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;

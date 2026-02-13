@@ -12,18 +12,21 @@
 				margin: 0;
 				padding: 24px;
 				line-height: 1.4;
-				color: #111;
+				background: #1f2430;
+				color: #e6e9ef;
 			}
 			.panel {
-				border: 1px solid #ddd;
+				border: 1px solid #3a4250;
 				border-radius: 8px;
 				padding: 16px;
 				margin-bottom: 16px;
+				background: #2a303b;
 			}
 			label {
 				display: block;
 				font-weight: bold;
 				margin: 10px 0 4px;
+				color: #d8deea;
 			}
 			input,
 			textarea,
@@ -31,14 +34,19 @@
 				width: 100%;
 				box-sizing: border-box;
 				padding: 8px;
+				background: #222833;
+				border: 1px solid #485263;
+				color: #e6e9ef;
+				border-radius: 6px;
 			}
 			textarea {
 				resize: vertical;
 			}
 			button {
 				cursor: pointer;
-				border: 1px solid #bbb;
-				background: #f9f9f9;
+				border: 1px solid #4a5466;
+				background: #343c4a;
+				color: #e6e9ef;
 				border-radius: 6px;
 				padding: 8px 10px;
 				margin-top: 12px;
@@ -46,7 +54,7 @@
 			button.icon-button {
 				padding: 2px 6px;
 				margin-top: 0;
-				font-size: 14px;
+				font-size: 16px;
 				line-height: 1;
 			}
 			.hidden {
@@ -54,6 +62,14 @@
 			}
 			.status {
 				margin-top: 10px;
+				color: #aeb7c6;
+			}
+			ul {
+				margin: 8px 0 0;
+				padding-left: 18px;
+			}
+			li {
+				margin: 4px 0;
 			}
 		</style>
 	</head>
@@ -140,16 +156,6 @@
 
 			<label for="raidSelect">Raid</label>
 			<select id="raidSelect"></select>
-
-			<label for="title">Titel</label>
-			<input
-				id="title"
-				type="text" />
-
-			<label for="description">Beschreibung</label>
-			<textarea
-				id="description"
-				rows="4"></textarea>
 
 			<label for="markerString">Marker-String</label>
 			<textarea
