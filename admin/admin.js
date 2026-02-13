@@ -283,6 +283,13 @@ function renderMarkerList(markers, emptyLabel) {
 		const text = document.createElement('span');
 		text.textContent = `v${marker.version} (Typ: ${markerType}, Raidgruppe: ${groupName}, Raid: ${raidName})`;
 
+		const detailLink = document.createElement('a');
+		detailLink.href = getMarkerDetailUrl(marker.id);
+		detailLink.textContent = 'Zur Detailseite';
+		detailLink.classList.add('detail-link');
+		detailLink.target = '_blank';
+		detailLink.rel = 'noopener noreferrer';
+
 		const deleteButton = document.createElement('button');
 		deleteButton.type = 'button';
 		deleteButton.innerHTML = DELETE_ICON_SVG;
@@ -304,8 +311,18 @@ function renderMarkerList(markers, emptyLabel) {
 		listItem.appendChild(text);
 		listItem.appendChild(document.createTextNode(' '));
 		listItem.appendChild(deleteButton);
+		listItem.appendChild(document.createElement('br'));
+		listItem.appendChild(detailLink);
 		markerList.appendChild(listItem);
 	}
+}
+
+function getMarkerDetailUrl(markerId) {
+	const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+	const markerPath = isLocalHost ? '/public/marker.html' : '/marker.html';
+	const url = new URL(markerPath, window.location.origin);
+	url.searchParams.set('id', markerId);
+	return url.toString();
 }
 
 function getEntityName(items, id) {
