@@ -24,6 +24,9 @@ jobs:
 
       - name: Build static site layout
         run: |
+          # prepare output directory
+          mkdir -p dist
+
           # root assets
           cp public/index.html dist/index.html
           cp public/app.js dist/app.js
