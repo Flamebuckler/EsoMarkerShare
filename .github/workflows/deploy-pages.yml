@@ -36,6 +36,10 @@ jobs:
 
           cp config.js dist/config.js
 
+          # include generated CSS
+          mkdir -p dist/css
+          cp public/css/main.css dist/css/main.css
+
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/index.html
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/marker.html
           # admin.html already uses ../config.js and stays correct, no rewrite needed
