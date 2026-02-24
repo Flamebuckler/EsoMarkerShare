@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0" />
+		<title>ESO Marker Share - Admin</title>
+		<link
+			rel="stylesheet"
+			href="css/main.css" />
+	</head>
+	<body>
+		<header class="site-header">
+			<h1>ESO Marker Share - Admin</h1>
+			<p>Share and manage your markers for ESO raids</p>
+		</header>
+		<main class="container">
+			<!-- login panel shown when not authenticated -->
+			<section
+				class="card"
+				id="loginPanel">
+				<h2>Administrator login</h2>
+				<label for="username">Username</label>
+				<input
+					id="username"
+					type="text" />
+				<label for="password">Password</label>
+				<input
+					id="password"
+					type="password" />
+				<button
+					id="loginBtn"
+					type="button">
+					Log in
+				</button>
+				<div
+					id="loginStatus"
+					class="status"></div>
+			</section>
+
+			<section
+				class="card hidden"
+				id="adminPanel">
+				<p class="card-title">Create group</p>
+
+				<label for="newGroupName">Name</label>
+				<input
+					id="newGroupName"
+					type="text"
+					placeholder="e.g. Group A" />
+				<button
+					id="createGroupBtn"
+					type="button">
+					Create group
+				</button>
+				<div
+					id="groupStatus"
+					class="status"></div>
+				<div class="admin-list-header">Existing groups</div>
+				<ul
+					id="groupList"
+					class="admin-list"></ul>
+			</section>
+
+			<section
+				class="card hidden"
+				id="adminPanelRaids">
+				<p class="card-title">Create raid</p>
+
+				<label for="newRaidName">Name</label>
+				<input
+					id="newRaidName"
+					type="text"
+					placeholder="e.g. Sunspire" />
+				<button
+					id="createRaidBtn"
+					type="button">
+					Create raid
+				</button>
+				<div
+					id="raidStatus"
+					class="status"></div>
+				<div class="admin-list-header">Existing raids</div>
+				<ul
+					id="raidList"
+					class="admin-list"></ul>
+			</section>
+
+			<section
+				class="card hidden"
+				id="adminPanelMarkers">
+				<p class="card-title">Create marker</p>
+
+				<label for="groupSelect">Group</label>
+				<select id="groupSelect"></select>
+
+				<label for="raidSelect">Raid</label>
+				<select id="raidSelect"></select>
+
+				<label for="markerType">Type</label>
+				<select id="markerType">
+					<option value="Akamatsu">Akamatsu</option>
+					<option value="Elms">Elms</option>
+					<option value="Breadcrumbs">Breadcrumbs</option>
+				</select>
+
+				<label for="markerString">Marker string</label>
+				<textarea
+					id="markerString"
+					rows="15"></textarea>
+
+				<button
+					id="saveBtn"
+					type="button">
+					Save marker
+				</button>
+				<div
+					id="saveStatus"
+					class="status"></div>
+				<div class="admin-list-header">Existing markers</div>
+				<table
+					id="markerTable"
+					class="results-table">
+					<thead>
+						<tr>
+							<th>Group</th>
+							<th>Raid</th>
+							<th>Type</th>
+							<th>Version</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</section>
+		</main>
+		<script
+			src="../config.js"
+			defer></script>
+		<script
+			src="admin.js"
+			defer></script>
+	</body>
+</html>

@@ -1,7 +1,7 @@
 const API_BASE = window.APP_CONFIG?.API_BASE || '';
 
 if (!API_BASE) {
-	throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
+	throw new Error('API_BASE missing. Please configure config.js.');
 }
 
 const groupsContainer = document.getElementById('groups');
@@ -29,7 +29,7 @@ async function init() {
 		const groupsResponse = await apiGet('/api/groups');
 		renderGroups(groupsResponse.groups || []);
 	} catch (error) {
-		groupsContainer.textContent = `Fehler: ${error.message}`;
+		groupsContainer.textContent = `Error: ${error.message}`;
 	}
 }
 
@@ -37,7 +37,7 @@ function renderGroups(groups) {
 	groupsContainer.innerHTML = '';
 
 	if (!groups.length) {
-		groupsContainer.textContent = 'Keine Gruppen gefunden.';
+		groupsContainer.textContent = 'No groups found.';
 		return;
 	}
 
@@ -58,14 +58,14 @@ function renderGroups(groups) {
 }
 
 async function loadRaids(groupId) {
-	raidsContainer.innerHTML = 'Lädt...';
+	raidsContainer.innerHTML = 'Loading...';
 	markersContainer.innerHTML = '';
 
 	try {
 		const response = await apiGet(`/api/groups/${encodeURIComponent(groupId)}/raids`);
 		renderRaids(response.raids || []);
 	} catch (error) {
-		raidsContainer.textContent = `Fehler: ${error.message}`;
+		raidsContainer.textContent = `Error: ${error.message}`;
 	}
 }
 
@@ -73,7 +73,7 @@ function renderRaids(raids) {
 	raidsContainer.innerHTML = '';
 
 	if (!raids.length) {
-		raidsContainer.textContent = 'Keine Raids für diese Gruppe gefunden.';
+		raidsContainer.textContent = 'No raids found for this group.';
 		return;
 	}
 
@@ -92,7 +92,7 @@ function renderRaids(raids) {
 }
 
 async function loadMarkers(groupId, raidId) {
-	markersContainer.innerHTML = 'Lädt...';
+	markersContainer.innerHTML = 'Loading...';
 
 	try {
 		const response = await apiGet(
@@ -100,7 +100,7 @@ async function loadMarkers(groupId, raidId) {
 		);
 		renderMarkers(response.markers || []);
 	} catch (error) {
-		markersContainer.textContent = `Fehler: ${error.message}`;
+		markersContainer.textContent = `Error: ${error.message}`;
 	}
 }
 
@@ -108,7 +108,7 @@ function renderMarkers(markers) {
 	markersContainer.innerHTML = '';
 
 	if (!markers.length) {
-		markersContainer.textContent = 'Keine Marker-Versionen gefunden.';
+		markersContainer.textContent = 'No marker versions found.';
 		return;
 	}
 
@@ -183,7 +183,7 @@ async function loadMarker(markerId) {
 		);
 	} catch (error) {
 		hideMarkerDetails();
-		copyStatus.textContent = `Fehler: ${error.message}`;
+		copyStatus.textContent = `Error: ${error.message}`;
 	}
 }
 
@@ -192,9 +192,9 @@ function showMarkerDetails(marker, groups, raids) {
 	const group = groups.find((item) => item.id === marker.groupId);
 	const raid = raids.find((item) => item.id === marker.raidId);
 
-	markerGroupName.textContent = group ? group.name : marker.groupId || 'Unbekannt';
-	markerRaidName.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
-	markerType.textContent = marker.type || 'Unbekannt';
+	markerGroupName.textContent = group ? group.name : marker.groupId || 'Unknown';
+	markerRaidName.textContent = raid ? raid.name : marker.raidId || 'Unknown';
+	markerType.textContent = marker.type || 'Unknown';
 	markerVersion.textContent = String(marker.version);
 	markerString.value = marker.markerString;
 	copyStatus.textContent = '';
@@ -205,7 +205,7 @@ function showMarkerDetails(marker, groups, raids) {
 
 	copyBtn.onclick = async () => {
 		const ok = await copyText(marker.markerString);
-		copyStatus.textContent = ok ? 'Kopiert.' : 'Kopieren fehlgeschlagen.';
+		copyStatus.textContent = ok ? 'Copied.' : 'Copy failed.';
 	};
 }
 

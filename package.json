@@ -1,0 +1,13 @@
+{
+	"dependencies": {
+		"styles": "github:flamebuckler/styles"
+	},
+	"devDependencies": {
+		"sass": "^1.73.0",
+		"wrangler": "^4.67.1"
+	},
+	"scripts": {
+		"build:css": "sass --load-path=node_modules scss/main.scss public/css/main.css --no-source-map",
+		"watch:css": "sass --load-path=node_modules --watch scss:public/css --no-source-map"
+	}
+}

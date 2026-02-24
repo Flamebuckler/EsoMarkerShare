@@ -2,7 +2,7 @@ const API_BASE = window.APP_CONFIG?.API_BASE || '';
 const DELETE_ICON_SVG = '×';
 
 if (!API_BASE) {
-	throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
+	throw new Error('API_BASE missing. Please configure config.js.');
 }
 const TOKEN_KEY = 'eso_admin_token';
 
@@ -32,7 +32,7 @@ const markerTypeSelect = document.getElementById('markerType');
 const markerStringInput = document.getElementById('markerString');
 const saveBtn = document.getElementById('saveBtn');
 const saveStatus = document.getElementById('saveStatus');
-const markerList = document.getElementById('markerList');
+const markerTable = document.getElementById('markerTable');
 
 let groupsCache = [];
 let raidsCache = [];
@@ -52,7 +52,7 @@ raidSelect.addEventListener('change', () => {
 });
 
 loginBtn.addEventListener('click', async () => {
-	loginStatus.textContent = 'Login läuft...';
+	loginStatus.textContent = 'Logging in...';
 
 	try {
 		const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -70,16 +70,16 @@ loginBtn.addEventListener('click', async () => {
 		}
 
 		localStorage.setItem(TOKEN_KEY, data.token);
-		loginStatus.textContent = 'Login erfolgreich.';
+		loginStatus.textContent = 'Login successful.';
 		showAdmin();
 		await loadSelectionData();
 	} catch (error) {
-		loginStatus.textContent = `Login fehlgeschlagen: ${error.message}`;
+		loginStatus.textContent = `Login failed: ${error.message}`;
 	}
 });
 
 createGroupBtn.addEventListener('click', async () => {
-	groupStatus.textContent = 'Speichern läuft...';
+	groupStatus.textContent = 'Saving...';
 
 	try {
 		const activeToken = getRequiredToken();
@@ -94,25 +94,25 @@ createGroupBtn.addEventListener('click', async () => {
 
 		const data = await response.json();
 		if (response.status === 401) {
-			showLogin('Session abgelaufen. Bitte erneut einloggen.');
-			throw new Error(data.error || 'Session abgelaufen.');
+			showLogin('Session expired. Please log in again.');
+			throw new Error(data.error || 'Session expired.');
 		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
 
 		groupStatus.textContent = data.created
-			? `Raidgruppe erstellt: ${data.group.name}`
-			: `Raidgruppe existiert bereits: ${data.group.name}`;
+			? `Group created: ${data.group.name}`
+			: `Group already exists: ${data.group.name}`;
 		newGroupNameInput.value = '';
 		await loadSelectionData();
 	} catch (error) {
-		groupStatus.textContent = `Fehler: ${error.message}`;
+		groupStatus.textContent = `Error: ${error.message}`;
 	}
 });
 
 createRaidBtn.addEventListener('click', async () => {
-	raidStatus.textContent = 'Speichern läuft...';
+	raidStatus.textContent = 'Saving...';
 
 	try {
 		const activeToken = getRequiredToken();
@@ -127,20 +127,20 @@ createRaidBtn.addEventListener('click', async () => {
 
 		const data = await response.json();
 		if (response.status === 401) {
-			showLogin('Session abgelaufen. Bitte erneut einloggen.');
-			throw new Error(data.error || 'Session abgelaufen.');
+			showLogin('Session expired. Please log in again.');
+			throw new Error(data.error || 'Session expired.');
 		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
 
 		raidStatus.textContent = data.created
-			? `Raid erstellt: ${data.raid.name}`
-			: `Raid existiert bereits: ${data.raid.name}`;
+			? `Raid created: ${data.raid.name}`
+			: `Raid already exists: ${data.raid.name}`;
 		newRaidNameInput.value = '';
 		await loadSelectionData();
 	} catch (error) {
-		raidStatus.textContent = `Fehler: ${error.message}`;
+		raidStatus.textContent = `Error: ${error.message}`;
 	}
 });
 
@@ -155,21 +155,21 @@ saveBtn.addEventListener('click', async () => {
 	};
 
 	if (!payload.groupId || !payload.raidId) {
-		saveStatus.textContent = 'Bitte zuerst eine Raidgruppe und einen Raid auswählen.';
+		saveStatus.textContent = 'Please select a group and a raid first.';
 		return;
 	}
 
 	if (!payload.markerString.trim()) {
-		saveStatus.textContent = 'markerString ist erforderlich.';
+		saveStatus.textContent = 'Marker string is required.';
 		return;
 	}
 
 	if (!payload.type) {
-		saveStatus.textContent = 'Typ ist erforderlich.';
+		saveStatus.textContent = 'Type is required.';
 		return;
 	}
 
-	saveStatus.textContent = 'Speichern läuft...';
+	saveStatus.textContent = 'Saving...';
 
 	try {
 		const activeToken = getRequiredToken();
@@ -185,18 +185,18 @@ saveBtn.addEventListener('click', async () => {
 
 		const data = await response.json();
 		if (response.status === 401) {
-			showLogin('Session abgelaufen. Bitte erneut einloggen.');
-			throw new Error(data.error || 'Session abgelaufen.');
+			showLogin('Session expired. Please log in again.');
+			throw new Error(data.error || 'Session expired.');
 		}
 		if (!response.ok) {
 			throw new Error(data.error || `HTTP ${response.status}`);
 		}
 
-		saveStatus.textContent = `Gespeichert: Marker ${data.marker.id}, Version v${data.marker.version}`;
+		saveStatus.textContent = `Saved: Marker ${data.marker.id}, version v${data.marker.version}`;
 		markerStringInput.value = '';
 		await loadMarkerList();
 	} catch (error) {
-		saveStatus.textContent = `Speichern fehlgeschlagen: ${error.message}`;
+		saveStatus.textContent = `Save failed: ${error.message}`;
 	}
 });
 
@@ -213,14 +213,14 @@ function showLogin(message) {
 	adminPanel.classList.add('hidden');
 	adminPanelRaids.classList.add('hidden');
 	adminPanelMarkers.classList.add('hidden');
-	loginStatus.textContent = message || 'Bitte erneut einloggen.';
+	loginStatus.textContent = message || 'Please log in again.';
 }
 
 function getRequiredToken() {
 	const token = localStorage.getItem(TOKEN_KEY);
 	if (!token) {
-		showLogin('Session abgelaufen. Bitte erneut einloggen.');
-		throw new Error('Nicht eingeloggt.');
+		showLogin('Session expired. Please log in again.');
+		throw new Error('Not logged in.');
 	}
 	return token;
 }
@@ -236,10 +236,10 @@ async function loadSelectionData() {
 		groupsCache = groups;
 		raidsCache = raids;
 
-		renderSelect(groupSelect, groups, 'Keine Raidgruppen vorhanden');
-		renderSelect(raidSelect, raids, 'Keine Raids vorhanden');
+		renderSelect(groupSelect, groups, 'No groups available');
+		renderSelect(raidSelect, raids, 'No raids available');
 		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden', async (item) => {
-			if (!confirm(`Raidgruppe wirklich löschen?\n\n${item.name}`)) return;
+			if (!confirm(`Really delete group?\n\n${item.name}`)) return;
 			try {
 				const activeToken = getRequiredToken();
 				await apiDelete(`/api/groups/${encodeURIComponent(item.id)}`, activeToken);
@@ -250,7 +250,7 @@ async function loadSelectionData() {
 			}
 		});
 		renderEntityList(raidList, raids, 'Keine Raids vorhanden', async (item) => {
-			if (!confirm(`Raid wirklich löschen?\n\n${item.name}`)) return;
+			if (!confirm(`Really delete raid?\n\n${item.name}`)) return;
 			try {
 				const activeToken = getRequiredToken();
 				await apiDelete(`/api/raids/${encodeURIComponent(item.id)}`, activeToken);
@@ -262,7 +262,7 @@ async function loadSelectionData() {
 		});
 		await loadMarkerList();
 	} catch (error) {
-		saveStatus.textContent = `Fehler beim Laden der Listen: ${error.message}`;
+		saveStatus.textContent = `Error loading lists: ${error.message}`;
 	}
 }
 
@@ -281,35 +281,50 @@ async function loadMarkerList() {
 			markers = markers.filter((marker) => marker.raidId === raidId);
 		}
 
-		renderMarkerList(markers, 'Keine Marker vorhanden');
+		markers = sortMarkers(markers);
+		renderMarkerTable(markers, 'No markers available');
 	} catch (error) {
-		renderMarkerList([], `Fehler beim Laden: ${error.message}`);
+		renderMarkerTable([], `Error loading: ${error.message}`);
 	}
 }
 
-function renderMarkerList(markers, emptyLabel) {
-	markerList.innerHTML = '';
+function renderMarkerTable(markers, emptyLabel) {
+	const tbody = markerTable.querySelector('tbody');
+	tbody.innerHTML = '';
 
 	if (!markers.length) {
-		const emptyItem = document.createElement('li');
-		emptyItem.textContent = emptyLabel;
-		markerList.appendChild(emptyItem);
+		const row = document.createElement('tr');
+		const cell = document.createElement('td');
+		cell.colSpan = 5;
+		cell.textContent = emptyLabel;
+		row.appendChild(cell);
+		tbody.appendChild(row);
 		return;
 	}
 
 	for (const marker of markers) {
-		const listItem = document.createElement('li');
+		const tr = document.createElement('tr');
 		const groupName = getEntityName(groupsCache, marker.groupId);
 		const raidName = getEntityName(raidsCache, marker.raidId);
-		const markerType = marker.type || 'Unbekannt';
-		const text = document.createElement('span');
-		text.textContent = `v${marker.version} (Typ: ${markerType}, Raidgruppe: ${groupName}, Raid: ${raidName})`;
+		const markerType = marker.type || 'Unknown';
+
+		function createCell(content) {
+			const td = document.createElement('td');
+			td.appendChild(content);
+			return td;
+		}
+		tr.appendChild(createCell(document.createTextNode(groupName)));
+		tr.appendChild(createCell(document.createTextNode(raidName)));
+		tr.appendChild(createCell(document.createTextNode(markerType)));
+		tr.appendChild(createCell(document.createTextNode(`v${marker.version}`)));
+
+		const actionsTd = document.createElement('td');
 		const detailUrl = getMarkerDetailUrl(marker.id);
 
 		const detailButton = document.createElement('button');
 		detailButton.type = 'button';
 		detailButton.classList.add('inline-button');
-		detailButton.textContent = 'Zur Detailseite';
+		detailButton.textContent = 'View details';
 		detailButton.addEventListener('click', () => {
 			window.open(detailUrl, '_blank', 'noopener,noreferrer');
 		});
@@ -317,7 +332,7 @@ function renderMarkerList(markers, emptyLabel) {
 		const copyLinkButton = document.createElement('button');
 		copyLinkButton.type = 'button';
 		copyLinkButton.classList.add('inline-button');
-		copyLinkButton.textContent = 'Link kopieren';
+		copyLinkButton.textContent = 'Copy link';
 		copyLinkButton.addEventListener('click', async () => {
 			const ok = await copyText(detailUrl);
 			saveStatus.textContent = ok ? 'Detail-Link kopiert.' : 'Kopieren fehlgeschlagen.';
@@ -330,7 +345,7 @@ function renderMarkerList(markers, emptyLabel) {
 		deleteButton.title = 'Löschen';
 		deleteButton.setAttribute('aria-label', 'Löschen');
 		deleteButton.addEventListener('click', async () => {
-			if (!confirm(`Marker wirklich löschen?\n\nVersion v${marker.version}`)) return;
+			if (!confirm(`Really delete marker?\n\nVersion v${marker.version}`)) return;
 			try {
 				const activeToken = getRequiredToken();
 				await apiDelete(`/api/markers/${encodeURIComponent(marker.id)}`, activeToken);
@@ -341,14 +356,14 @@ function renderMarkerList(markers, emptyLabel) {
 			}
 		});
 
-		listItem.appendChild(text);
-		listItem.appendChild(document.createTextNode(' '));
-		listItem.appendChild(deleteButton);
-		listItem.appendChild(document.createElement('br'));
-		listItem.appendChild(detailButton);
-		listItem.appendChild(document.createTextNode(' '));
-		listItem.appendChild(copyLinkButton);
-		markerList.appendChild(listItem);
+		actionsTd.appendChild(detailButton);
+		actionsTd.appendChild(document.createTextNode(' '));
+		actionsTd.appendChild(copyLinkButton);
+		actionsTd.appendChild(document.createTextNode(' '));
+		actionsTd.appendChild(deleteButton);
+
+		tr.appendChild(actionsTd);
+		tbody.appendChild(tr);
 	}
 }
 
@@ -387,9 +402,28 @@ async function copyText(text) {
 }
 
 function getEntityName(items, id) {
-	if (!id) return 'Unbekannt';
+	if (!id) return 'Unknown';
 	const match = items.find((item) => item.id === id);
 	return match ? match.name : id;
+}
+
+// sort markers by group → raid → type → version
+function sortMarkers(markers) {
+	return markers.sort((a, b) => {
+		const ga = getEntityName(groupsCache, a.groupId);
+		const gb = getEntityName(groupsCache, b.groupId);
+		if (ga !== gb) return ga.localeCompare(gb);
+
+		const ra = getEntityName(raidsCache, a.raidId);
+		const rb = getEntityName(raidsCache, b.raidId);
+		if (ra !== rb) return ra.localeCompare(rb);
+
+		const ta = a.type || '';
+		const tb = b.type || '';
+		if (ta !== tb) return ta.localeCompare(tb);
+
+		return (a.version || 0) - (b.version || 0);
+	});
 }
 
 function renderEntityList(listElement, items, emptyLabel, onDelete) {
@@ -429,7 +463,7 @@ function renderSelect(selectElement, items, emptyLabel) {
 
 	const placeholderOption = document.createElement('option');
 	placeholderOption.value = '';
-	placeholderOption.textContent = 'Bitte auswählen';
+	placeholderOption.textContent = 'Please select';
 	placeholderOption.selected = true;
 	selectElement.appendChild(placeholderOption);
 
@@ -451,8 +485,8 @@ async function apiGet(path) {
 	const data = await response.json();
 
 	if (response.status === 401) {
-		showLogin('Session abgelaufen. Bitte erneut einloggen.');
-		throw new Error(data.error || 'Session abgelaufen.');
+		showLogin('Session expired. Please log in again.');
+		throw new Error(data.error || 'Session expired.');
 	}
 
 	if (!response.ok) {
@@ -472,8 +506,8 @@ async function apiDelete(path, token) {
 
 	const data = await response.json();
 	if (response.status === 401) {
-		showLogin('Session abgelaufen. Bitte erneut einloggen.');
-		throw new Error(data.error || 'Session abgelaufen.');
+		showLogin('Session expired. Please log in again.');
+		throw new Error(data.error || 'Session expired.');
 	}
 	if (!response.ok) {
 		throw new Error(data.error || `HTTP ${response.status}`);

@@ -1,0 +1,216 @@
+@use 'styles/src/main';
+
+// override or extend central variables if needed
+:root {
+	/* override central palette to match previous color scheme */
+	--color-button-bg: #343c4a;
+	--color-button-active-bg: var(--color-accent);
+
+	--color-border: #3a4250;
+	--color-link-hover: #8fb3ff;
+	/* other overrides may be added here */
+}
+
+.card {
+	margin-bottom: 20px;
+}
+
+.admin-list-header {
+	font-weight: bold;
+	margin-top: 20px;
+}
+
+.admin-list {
+	margin-left: 20px;
+
+	// style for optional table layout
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	th,
+	td {
+		border: 1px solid var(--color-border);
+		padding: var(--space-xs);
+		text-align: left;
+	}
+}
+
+.list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-sm);
+	margin-top: var(--space-md);
+}
+
+.details {
+	margin-top: 0;
+}
+
+.marker-rows {
+	display: flex;
+	flex-direction: column;
+}
+
+.marker-row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+}
+
+.marker-row-label {
+	min-width: 110px;
+}
+
+.marker-row-versions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-sm);
+}
+
+button {
+	cursor: pointer;
+	background: var(--color-button-bg, #343c4a);
+	color: var(--color-foreground);
+	border-radius: 6px;
+	padding: 8px 10px;
+	margin-top: var(--space-md);
+
+	&.active {
+		background: var(--color-button-active-bg);
+		color: var(--color-background);
+	}
+
+	&.icon-button {
+		padding: 2px 6px;
+		margin-top: 0;
+		font-size: 16px;
+		line-height: 1;
+	}
+
+	&.inline-button {
+		padding: 4px 8px;
+		margin-top: 0;
+		font-size: 12px;
+		line-height: 1.2;
+	}
+}
+
+textarea {
+	width: 100%;
+	box-sizing: border-box;
+	background: var(--color-input-bg, #222833);
+	border: 1px solid var(--color-input-border, #485263);
+	color: var(--color-foreground);
+	border-radius: 6px;
+	padding: 10px;
+	resize: vertical;
+}
+
+input,
+select {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px;
+	background: var(--color-input-bg, #222833);
+	border: 1px solid var(--color-input-border, #485263);
+	color: var(--color-foreground);
+	border-radius: 6px;
+}
+
+label {
+	display: block;
+	font-weight: bold;
+	margin: 10px 0 4px;
+	color: var(--color-foreground-alt, #d8deea);
+}
+
+.muted {
+	color: var(--color-muted);
+}
+
+.highlight {
+	color: var(--color-accent);
+}
+
+.copy-button-container {
+	display: flex;
+	gap: var(--space-sm);
+	align-items: center;
+	margin-top: var(--space-md);
+	margin-bottom: var(--space-md);
+}
+
+/* link to admin page, shown inline with content */
+.admin-link {
+	/* float right instead of fixed; scrolls with content */
+	float: right;
+	margin: var(--space-md) var(--space-lg) 0 0;
+	color: var(--color-link);
+	text-decoration: none;
+	background: var(--color-card);
+	padding: 2px 6px;
+	font-size: 0.9rem;
+	opacity: 0.6;
+	border-radius: 4px;
+	border: 1px solid var(--color-border-alt, #4a5466);
+}
+
+.admin-link:hover {
+	opacity: 1;
+	text-decoration: underline;
+}
+
+.link {
+	word-break: break-all;
+	color: var(--color-link);
+}
+
+a.detail-link {
+	color: var(--color-link);
+	text-decoration: underline;
+
+	&:hover {
+		color: var(--color-link-hover, #8fb3ff);
+	}
+}
+
+.back-link {
+	display: inline-block;
+	margin-bottom: var(--space-md);
+	color: var(--color-link);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.status {
+	margin-top: var(--space-sm);
+	color: var(--color-accent-secondary);
+	font-weight: 800;
+}
+
+// simplify focus on form controls: use only border color, no extra shadow
+input:focus,
+textarea:focus,
+select:focus {
+	box-shadow: none !important;
+	border-color: var(--color-accent);
+	outline: none;
+}
+
+li {
+	margin: 4px 0;
+}
+
+#copyStatus {
+	color: var(--color-accent-secondary);
+	font-weight: 800;
+}
+
+#loginBtn {
+	margin-top: var(--space-md);
+}

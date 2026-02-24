@@ -1,88 +1,64 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta
 			name="viewport"
 			content="width=device-width, initial-scale=1.0" />
 		<title>ESO Marker Detail</title>
-		<style>
-			body {
-				font-family: Arial, sans-serif;
-				margin: 0;
-				padding: 24px;
-				line-height: 1.4;
-				background: #1f2430;
-				color: #e6e9ef;
-			}
-			.panel {
-				border: 1px solid #3a4250;
-				border-radius: 8px;
-				padding: 16px;
-				background: #2a303b;
-			}
-			textarea {
-				width: 100%;
-				box-sizing: border-box;
-				background: #222833;
-				border: 1px solid #485263;
-				color: #e6e9ef;
-				border-radius: 6px;
-				padding: 10px;
-			}
-			button {
-				cursor: pointer;
-				border: 1px solid #4a5466;
-				background: #343c4a;
-				color: #e6e9ef;
-				border-radius: 6px;
-				padding: 8px 10px;
-			}
-			.muted {
-				color: #aeb7c6;
-			}
-			.highlight {
-				color: #dc4914;
-			}
-			.back-link {
-				display: inline-block;
-				margin-bottom: 12px;
-				color: #b8c9e6;
-				text-decoration: none;
-			}
-			.back-link:hover {
-				text-decoration: underline;
-			}
-		</style>
+		<link
+			rel="stylesheet"
+			href="css/main.css" />
 	</head>
 	<body>
-		<section class="panel">
-			<h1>Marker Details</h1>
-			<p><strong>Raidgruppe:</strong> <span id="groupName"></span></p>
-			<p><strong>Raid:</strong> <span id="raidName"></span></p>
-			<p><strong>Typ:</strong> <span id="type"></span></p>
-			<p><strong>Version:</strong> <span id="version"></span></p>
-			<button
-				id="copyBtn"
-				type="button">
-				Marker kopieren
-			</button>
-			<span
-				id="copyStatus"
-				class="highlight"></span>
-			<p></p>
-			<textarea
-				id="markerString"
-				rows="15"
-				readonly></textarea>
-		</section>
+		<header class="site-header">
+			<h1>ESO Marker Share</h1>
+			<p>Share and manage your markers for ESO raids</p>
+		</header>
+		<main class="container">
+			<section class="card details">
+				<p class="card-title">Marker details</p>
+
+				<div class="marker-row list">
+					<div class="marker-row-label">Group:</div>
+					<div id="groupName"></div>
+				</div>
+
+				<div class="marker-row list details">
+					<div class="marker-row-label">Raid:</div>
+					<div id="raidName"></div>
+				</div>
+				<div class="marker-row list details">
+					<div class="marker-row-label">Type:</div>
+					<div id="type"></div>
+				</div>
+				<div class="marker-row list details">
+					<div class="marker-row-label">Version:</div>
+					<div id="version"></div>
+				</div>
+
+				<div class="copy-button-container">
+					<button
+						id="copyBtn"
+						type="button">
+						Copy marker
+					</button>
+					<span id="copyStatus"></span>
+				</div>
+
+				<textarea
+					id="markerString"
+					rows="15"
+					readonly></textarea>
+			</section>
+		</main>
 
 		<script src="../config.js"></script>
 		<script>
 			const API_BASE = window.APP_CONFIG?.API_BASE || '';
 
 			if (!API_BASE) {
-				throw new Error('API_BASE fehlt. Bitte config.js konfigurieren.');
+				throw new Error('API_BASE missing. Please configure config.js.');
 			}
 
 			const versionEl = document.getElementById('version');
@@ -97,7 +73,7 @@
 			const markerId = params.get('id');
 
 			if (!markerId) {
-				copyStatus.textContent = 'Kein Marker angegeben.';
+				copyStatus.textContent = 'No marker specified.';
 			} else {
 				loadMarker(markerId);
 			}
@@ -125,23 +101,22 @@
 					const group = groups.find((item) => item.id === marker.groupId);
 					const raid = raids.find((item) => item.id === marker.raidId);
 
-					groupNameEl.textContent = group ? group.name : marker.groupId || 'Unbekannt';
-					raidNameEl.textContent = raid ? raid.name : marker.raidId || 'Unbekannt';
-					typeEl.textContent = marker.type || 'Unbekannt';
+					groupNameEl.textContent = group ? group.name : marker.groupId || 'Unknown';
+					raidNameEl.textContent = raid ? raid.name : marker.raidId || 'Unknown';
+					typeEl.textContent = marker.type || 'Unknown';
 					versionEl.textContent = String(marker.version);
 					markerEl.value = marker.markerString;
 
 					const autoCopied = await copyText(marker.markerString);
 					copyStatus.textContent = autoCopied
-						? 'Automatisch in die Zwischenablage kopiert.'
-						: 'Automatisches Kopieren nicht möglich. Bitte Button nutzen.';
-
+						? 'Automatically copied to clipboard.'
+						: 'Auto copy unavailable; please use the button.';
 					copyBtn.onclick = async () => {
 						const ok = await copyText(marker.markerString);
-						copyStatus.textContent = ok ? 'Kopiert.' : 'Kopieren fehlgeschlagen.';
+						copyStatus.textContent = ok ? 'Copied.' : 'Copy failed.';
 					};
 				} catch (error) {
-					copyStatus.textContent = `Fehler beim Laden: ${error.message}`;
+					copyStatus.textContent = `Error loading: ${error.message}`;
 				}
 			}
 

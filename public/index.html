@@ -1,156 +1,94 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta
 			name="viewport"
 			content="width=device-width, initial-scale=1.0" />
 		<title>ESO Marker Share</title>
-		<style>
-			body {
-				font-family: Arial, sans-serif;
-				margin: 0;
-				padding: 24px;
-				line-height: 1.4;
-				background: #1f2430;
-				color: #e6e9ef;
-			}
-			h1,
-			h2,
-			h3 {
-				margin: 0 0 12px;
-				color: #f0f2f6;
-			}
-			.layout {
-				display: grid;
-				gap: 16px;
-			}
-			.panel {
-				border: 1px solid #3a4250;
-				border-radius: 8px;
-				padding: 16px;
-				background: #2a303b;
-			}
-			.list {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 8px;
-			}
-			.marker-rows {
-				display: flex;
-				flex-direction: column;
-				gap: 10px;
-			}
-			.marker-row {
-				display: flex;
-				align-items: center;
-				gap: 10px;
-			}
-			.marker-row-label {
-				min-width: 110px;
-				font-weight: bold;
-				color: #d8deea;
-			}
-			.marker-row-versions {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 8px;
-			}
-			button {
-				cursor: pointer;
-				border: 1px solid #4a5466;
-				background: #343c4a;
-				color: #e6e9ef;
-				border-radius: 6px;
-				padding: 8px 10px;
-			}
-			button.active {
-				border-color: #8da2bf;
-				background: #3f4a5b;
-			}
-			textarea {
-				width: 100%;
-				box-sizing: border-box;
-				background: #222833;
-				border: 1px solid #485263;
-				color: #e6e9ef;
-				border-radius: 6px;
-				padding: 10px;
-			}
-			.muted {
-				color: #aeb7c6;
-			}
-			.row {
-				display: flex;
-				gap: 8px;
-				align-items: center;
-			}
-			.hidden {
-				display: none;
-			}
-			.link {
-				word-break: break-all;
-				color: #b8c9e6;
-			}
-		</style>
+		<link
+			rel="stylesheet"
+			href="css/main.css" />
 	</head>
 	<body>
-		<h1>ESO Marker Share</h1>
-
-		<div class="layout">
-			<section class="panel">
-				<h2>Raidgruppen</h2>
+		<a
+			href="admin.html"
+			class="admin-link"
+			>Admin</a
+		>
+		<header class="site-header">
+			<h1>ESO Marker Share</h1>
+			<p>Share and manage your markers for ESO raids</p>
+		</header>
+		<main class="container">
+			<section class="card">
+				<p class="card-title">Groups</p>
 				<div
 					id="groups"
 					class="list"></div>
 			</section>
 
-			<section class="panel">
-				<h2>Raids</h2>
+			<section class="card">
+				<p class="card-title">Raids</p>
 				<div
 					id="raids"
 					class="list"></div>
 			</section>
 
-			<section class="panel">
-				<h2>Marker</h2>
+			<section class="card">
+				<p class="card-title">Markers</p>
 				<div
 					id="markers"
-					class="marker-rows"></div>
+					class="marker-rows list"></div>
 			</section>
 
 			<section
 				id="markerDetails"
-				class="panel hidden">
-				<h2>Marker Details</h2>
+				class="card hidden">
+				<p class="card-title">Marker details</p>
 
-				<p><strong>Raidgruppe:</strong> <span id="markerGroupName"></span></p>
-				<p><strong>Raid:</strong> <span id="markerRaidName"></span></p>
-				<p><strong>Typ:</strong> <span id="markerType"></span></p>
-				<p><strong>Version:</strong> <span id="markerVersion"></span></p>
+				<div class="marker-row list">
+					<div class="marker-row-label">Group:</div>
+					<div id="markerGroupName"></div>
+				</div>
 
-				<div class="row">
+				<div class="marker-row list details">
+					<div class="marker-row-label">Raid:</div>
+					<div id="markerRaidName"></div>
+				</div>
+				<div class="marker-row list details">
+					<div class="marker-row-label">Type:</div>
+					<div id="markerType"></div>
+				</div>
+				<div class="marker-row list details">
+					<div class="marker-row-label">Version:</div>
+					<div id="markerVersion"></div>
+				</div>
+				<div class="marker-row list details">
+					<div class="marker-row-label">Direct link:</div>
+					<div class="direct-link-container">
+						<a
+							id="directLink"
+							class="link"
+							href="#"></a>
+					</div>
+				</div>
+
+				<div class="copy-button-container">
 					<button
 						id="copyBtn"
 						type="button">
-						Marker kopieren
+						Copy marker
 					</button>
-					<span
-						id="copyStatus"
-						class="muted"></span>
+					<span id="copyStatus"></span>
 				</div>
-				<p class="muted">Direktlink:</p>
-				<a
-					id="directLink"
-					class="link"
-					href="#"></a>
-				<p></p>
+
 				<textarea
 					id="markerString"
 					rows="15"
 					readonly></textarea>
 			</section>
-		</div>
+		</main>
 
 		<script
 			src="../config.js"
