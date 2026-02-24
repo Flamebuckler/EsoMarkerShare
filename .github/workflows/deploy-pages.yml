@@ -30,13 +30,15 @@ jobs:
           cp public/app.js dist/app.js
           cp public/marker.html dist/marker.html
 
-          cp admin/index.html dist/admin/index.html
-          cp admin/admin.js dist/admin/admin.js
+          # admin page is now under public/
+          cp public/admin.html dist/admin/index.html
+          cp public/admin.js dist/admin/admin.js
 
           cp config.js dist/config.js
 
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/index.html
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/marker.html
+          # admin.html already uses ../config.js and stays correct, no rewrite needed
 
           touch dist/.nojekyll
 
