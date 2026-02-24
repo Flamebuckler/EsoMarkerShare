@@ -24,15 +24,14 @@ jobs:
 
       - name: Build static site layout
         run: |
-          mkdir -p dist/admin
-
+          # root assets
           cp public/index.html dist/index.html
           cp public/app.js dist/app.js
           cp public/marker.html dist/marker.html
 
-          # admin page is now under public/
-          cp public/admin.html dist/admin/index.html
-          cp public/admin.js dist/admin/admin.js
+          # admin page stays alongside index.html at root
+          cp public/admin.html dist/admin.html
+          cp public/admin.js dist/admin.js
 
           cp config.js dist/config.js
 
@@ -40,9 +39,10 @@ jobs:
           mkdir -p dist/css
           cp public/css/main.css dist/css/main.css
 
+          # adjust config path in top‑level pages
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/index.html
           sed -i 's|src="../config.js"|src="./config.js"|g' dist/marker.html
-          # admin.html already uses ../config.js and stays correct, no rewrite needed
+          sed -i 's|src="../config.js"|src="./config.js"|g' dist/admin.html
 
           touch dist/.nojekyll
 
