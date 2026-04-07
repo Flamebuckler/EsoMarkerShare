@@ -7,7 +7,7 @@
 		"wrangler": "^4.67.1"
 	},
 	"scripts": {
-		"build:css": "sass --load-path=node_modules scss/main.scss public/css/main.css --no-source-map",
-		"watch:css": "sass --load-path=node_modules --watch scss:public/css --no-source-map"
+		"css:build": "sass --load-path=node_modules scss/main.scss public/css/main.css --no-source-map",
+		"css:watch": "sass --load-path=node_modules --watch scss:public/css --no-source-map"
 	}
 }
