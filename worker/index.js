@@ -25,27 +25,39 @@ export default {
 				const username = String(body.username || '').trim();
 				const password = String(body.password || '');
 
-				const valid = await validateAdminCredentials(username, password, env);
-				if (!valid) {
-					return json({ error: 'Ungültige Login-Daten.' }, 401, origin, env);
+				const expiresIn = Number(env.JWT_EXPIRES_IN_SECONDS || 3600);
+
+				if (await validateAdminCredentials(username, password, env)) {
+					const token = await signJwt(
+						{
+							sub: username,
+							role: 'admin',
+						},
+						env.JWT_SECRET,
+						expiresIn,
+					);
+
+					return json({ token, expiresIn }, 200, origin, env);
 				}
 
-				const expiresIn = Number(env.JWT_EXPIRES_IN_SECONDS || 3600);
-				const token = await signJwt(
-					{
-						sub: username,
-						role: 'admin',
-					},
-					env.JWT_SECRET,
-					expiresIn,
-				);
+				const maintainer = await findMaintainer(env.ESO_Marker_KV, username);
+				if (maintainer) {
+					const incomingHash = await sha256Hex(password);
+					if (timingSafeEqual(incomingHash, String(maintainer.passwordHash || '').toLowerCase())) {
+						const token = await signJwt(
+							{
+								sub: username,
+								role: 'maintainer',
+							},
+							env.JWT_SECRET,
+							expiresIn,
+						);
 
-				return json({ token, expiresIn }, 200, origin, env);
-			}
+						return json({ token, expiresIn }, 200, origin, env);
+					}
+				}
 
-			if (path === '/api/groups' && method === 'GET') {
-				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
-				return json({ groups }, 200, origin, env);
+				return json({ error: 'Ungültige Login-Daten.' }, 401, origin, env);
 			}
 
 			if (path === '/api/raids' && method === 'GET') {
@@ -53,9 +65,190 @@ export default {
 				return json({ raids }, 200, origin, env);
 			}
 
+			if (path === '/api/groups' && method === 'GET') {
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				return json({ groups }, 200, origin, env);
+			}
+
 			if (path === '/api/markers' && method === 'GET') {
 				const markers = await getAllMarkerSummaries(env.ESO_Marker_KV);
+				const authorization = request.headers.get('authorization') || '';
+
+				if (authorization.startsWith('Bearer ')) {
+					const token = authorization.slice('Bearer '.length).trim();
+					const payload = await verifyJwt(token, env.JWT_SECRET);
+					if (payload?.role === 'maintainer') {
+						const maintainer = await findMaintainer(env.ESO_Marker_KV, payload.sub);
+						const assignedGroupIds = maintainer?.groupIds || [];
+						return json(
+							{ markers: markers.filter((marker) => assignedGroupIds.includes(marker.groupId)) },
+							200,
+							origin,
+							env,
+						);
+					}
+				}
+
 				return json({ markers }, 200, origin, env);
+			}
+
+			if (path === '/api/maintainers' && method === 'GET') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const maintainers = await getMaintainers(env.ESO_Marker_KV);
+				return json(
+					{
+						maintainers: maintainers.map((item) => ({
+							username: item.username,
+							groupIds: item.groupIds || [],
+						})),
+					},
+					200,
+					origin,
+					env,
+				);
+			}
+
+			if (path === '/api/maintainers' && method === 'POST') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const body = await safeJson(request);
+				const username = String(body.username || '').trim();
+				const password = String(body.password || '');
+				const groupIds = Array.isArray(body.groupIds)
+					? body.groupIds.map((id) => String(id || '').trim()).filter(Boolean)
+					: [];
+
+				if (!username || !password) {
+					return json({ error: 'Username and password are required.' }, 400, origin, env);
+				}
+
+				const configuredAdmin = String(env.ADMIN_USERNAME || '').trim();
+				if (configuredAdmin && username === configuredAdmin) {
+					return json({ error: 'Invalid maintainer username.' }, 400, origin, env);
+				}
+
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				const invalidGroupIds = groupIds.filter(
+					(groupId) => !groups.some((item) => item.id === groupId),
+				);
+				if (invalidGroupIds.length) {
+					return json(
+						{ error: `Ungültige groupIds: ${invalidGroupIds.join(', ')}` },
+						400,
+						origin,
+						env,
+					);
+				}
+
+				const maintainers = await getMaintainers(env.ESO_Marker_KV);
+				if (maintainers.some((item) => item.username === username)) {
+					return json({ error: 'Maintainer already exists.' }, 409, origin, env);
+				}
+
+				const maintainer = {
+					username,
+					passwordHash: await sha256Hex(password),
+					groupIds,
+				};
+				maintainers.push(maintainer);
+				await saveMaintainers(env.ESO_Marker_KV, maintainers);
+
+				return json(
+					{ maintainer: { username: maintainer.username, groupIds }, created: true },
+					201,
+					origin,
+					env,
+				);
+			}
+
+			if (path === '/api/maintainers/me' && method === 'GET') {
+				const authResult = await requireAdminOrMaintainer(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				if (authResult.payload.role === 'admin') {
+					return json({ username: authResult.payload.sub, role: 'admin' }, 200, origin, env);
+				}
+
+				const maintainer = await findMaintainer(env.ESO_Marker_KV, authResult.payload.sub);
+				if (!maintainer) {
+					return json({ error: 'Maintainer not found.' }, 401, origin, env);
+				}
+
+				return json(
+					{
+						username: maintainer.username,
+						role: 'maintainer',
+						groupIds: maintainer.groupIds || [],
+					},
+					200,
+					origin,
+					env,
+				);
+			}
+
+			const maintainerGroupUpdateMatch = path.match(/^\/api\/maintainers\/([^/]+)\/groups$/);
+			if (maintainerGroupUpdateMatch && method === 'PUT') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const username = decodeURIComponent(maintainerGroupUpdateMatch[1]);
+				const body = await safeJson(request);
+				const groupIds = Array.isArray(body.groupIds)
+					? body.groupIds.map((id) => String(id || '').trim()).filter(Boolean)
+					: [];
+
+				const groups = (await getJson(env.ESO_Marker_KV, 'groups')) || [];
+				const invalidGroupIds = groupIds.filter(
+					(groupId) => !groups.some((item) => item.id === groupId),
+				);
+				if (invalidGroupIds.length) {
+					return json(
+						{ error: `Ungültige groupIds: ${invalidGroupIds.join(', ')}` },
+						400,
+						origin,
+						env,
+					);
+				}
+
+				const maintainers = await getMaintainers(env.ESO_Marker_KV);
+				const index = maintainers.findIndex((item) => item.username === username);
+				if (index === -1) {
+					return json({ error: 'Maintainer not found.' }, 404, origin, env);
+				}
+
+				maintainers[index].groupIds = groupIds;
+				await saveMaintainers(env.ESO_Marker_KV, maintainers);
+
+				return json({ maintainer: { username, groupIds } }, 200, origin, env);
+			}
+
+			const maintainerDeleteMatch = path.match(/^\/api\/maintainers\/([^/]+)$/);
+			if (maintainerDeleteMatch && method === 'DELETE') {
+				const authResult = await requireAdmin(request, env);
+				if (!authResult.ok) {
+					return json({ error: authResult.error }, 401, origin, env);
+				}
+
+				const username = decodeURIComponent(maintainerDeleteMatch[1]);
+				const maintainers = await getMaintainers(env.ESO_Marker_KV);
+				const nextMaintainers = maintainers.filter((item) => item.username !== username);
+				if (nextMaintainers.length === maintainers.length) {
+					return json({ error: 'Maintainer not found.' }, 404, origin, env);
+				}
+				await saveMaintainers(env.ESO_Marker_KV, nextMaintainers);
+
+				return json({ deleted: true }, 200, origin, env);
 			}
 
 			const groupsRaidsMatch = path.match(/^\/api\/groups\/([^/]+)\/raids$/);
@@ -106,7 +299,7 @@ export default {
 			}
 
 			if (path === '/api/markers' && method === 'POST') {
-				const authResult = await requireAdmin(request, env);
+				const authResult = await requireAdminOrMaintainer(request, env);
 				if (!authResult.ok) {
 					return json({ error: authResult.error }, 401, origin, env);
 				}
@@ -129,6 +322,16 @@ export default {
 				const raidExists = raids.some((item) => item.id === raidId);
 				if (!raidExists) {
 					return json({ error: 'Ungültige raidId.' }, 400, origin, env);
+				}
+
+				if (authResult.payload.role === 'maintainer') {
+					const assignedGroupIds =
+						(await getMaintainers(env.ESO_Marker_KV)).find(
+							(item) => item.username === authResult.payload.sub,
+						)?.groupIds || [];
+					if (!assignedGroupIds.includes(groupId)) {
+						return json({ error: 'Nicht berechtigt für diese Gruppe.' }, 403, origin, env);
+					}
 				}
 
 				const groupRaidIdsKey = `group:${groupId}:raidIds`;
@@ -222,25 +425,21 @@ export default {
 
 				return json({ deleted: true }, 200, origin, env);
 			}
-
 			if (path === '/api/raids' && method === 'POST') {
-				const authResult = await requireAdmin(request, env);
+				const authResult = await requireAdminOrMaintainer(request, env);
 				if (!authResult.ok) {
 					return json({ error: authResult.error }, 401, origin, env);
 				}
-
 				const body = await safeJson(request);
 				const name = String(body.name || '').trim();
 				if (!name) {
 					return json({ error: 'Feld name ist erforderlich.' }, 400, origin, env);
 				}
-
 				const raids = (await getJson(env.ESO_Marker_KV, 'raids')) || [];
 				const existing = raids.find((item) => normalizeName(item.name) === normalizeName(name));
 				if (existing) {
 					return json({ raid: existing, created: false }, 200, origin, env);
 				}
-
 				const raidId = generateEntityId(
 					'raid',
 					name,
@@ -249,7 +448,6 @@ export default {
 				const raid = { id: raidId, name };
 				raids.push(raid);
 				await env.ESO_Marker_KV.put('raids', JSON.stringify(raids));
-
 				return json({ raid, created: true }, 201, origin, env);
 			}
 
@@ -543,6 +741,46 @@ async function requireAdmin(request, env) {
 	}
 
 	return { ok: true, payload };
+}
+
+async function requireAdminOrMaintainer(request, env) {
+	const authorization = request.headers.get('authorization') || '';
+	if (!authorization.startsWith('Bearer ')) {
+		return { ok: false, error: 'Fehlendes Bearer-Token.' };
+	}
+
+	const token = authorization.slice('Bearer '.length).trim();
+	const payload = await verifyJwt(token, env.JWT_SECRET);
+	if (!payload) {
+		return { ok: false, error: 'Ungültiges oder abgelaufenes Token.' };
+	}
+
+	if (payload.role !== 'admin' && payload.role !== 'maintainer') {
+		return { ok: false, error: 'Unzureichende Berechtigung.' };
+	}
+
+	return { ok: true, payload };
+}
+
+async function getMaintainers(kv) {
+	const maintainers = (await getJson(kv, 'maintainers')) || [];
+	if (!Array.isArray(maintainers)) {
+		return [];
+	}
+	return maintainers.map((item) => ({
+		username: String(item.username || ''),
+		passwordHash: String(item.passwordHash || ''),
+		groupIds: Array.isArray(item.groupIds) ? item.groupIds.map((id) => String(id)) : [],
+	}));
+}
+
+async function findMaintainer(kv, username) {
+	const maintainers = await getMaintainers(kv);
+	return maintainers.find((item) => item.username === String(username || '').trim()) || null;
+}
+
+async function saveMaintainers(kv, maintainers) {
+	await kv.put('maintainers', JSON.stringify(maintainers));
 }
 
 async function validateAdminCredentials(username, password, env) {

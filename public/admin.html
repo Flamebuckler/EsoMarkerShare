@@ -14,13 +14,22 @@
 		<header class="site-header">
 			<h1>ESO Marker Share - Admin</h1>
 			<p>Share and manage your markers for ESO raids</p>
+			<div
+				id="adminRoleStatus"
+				class="status"></div>
+			<button
+				id="logoutBtn"
+				type="button"
+				class="hidden">
+				Logout
+			</button>
 		</header>
 		<main class="container">
 			<!-- login panel shown when not authenticated -->
 			<section
 				class="card"
 				id="loginPanel">
-				<h2>Administrator login</h2>
+				<h2>Login</h2>
 				<label for="username">Username</label>
 				<input
 					id="username"
@@ -60,6 +69,52 @@
 				<div class="admin-list-header">Existing groups</div>
 				<ul
 					id="groupList"
+					class="admin-list"></ul>
+			</section>
+
+			<section
+				class="card hidden"
+				id="adminPanelMaintainers">
+				<p class="card-title">Manage maintainers</p>
+
+				<label for="newMaintainerUsername">Username</label>
+				<input
+					id="newMaintainerUsername"
+					type="text"
+					placeholder="e.g. maintainer1" />
+
+				<label for="newMaintainerPassword">Password</label>
+				<input
+					id="newMaintainerPassword"
+					type="password" />
+
+				<button
+					id="createMaintainerBtn"
+					type="button">
+					Create maintainer
+				</button>
+				<div
+					id="maintainerStatus"
+					class="status"></div>
+
+				<label for="maintainerUsernameSelect">Select maintainer</label>
+				<select id="maintainerUsernameSelect"></select>
+
+				<label for="maintainerGroupSelect">Assigned groups</label>
+				<select
+					id="maintainerGroupSelect"
+					multiple
+					size="6"></select>
+
+				<button
+					id="updateMaintainerGroupsBtn"
+					type="button">
+					Update assignments
+				</button>
+
+				<div class="admin-list-header">Existing maintainers</div>
+				<ul
+					id="maintainerList"
 					class="admin-list"></ul>
 			</section>
 

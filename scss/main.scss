@@ -69,12 +69,21 @@
 	gap: var(--space-sm);
 }
 
+.copy-button-container button {
+	margin-top: 0;
+}
+
+.marker-row-versions button {
+	margin-top: 0;
+}
+
 button {
 	cursor: pointer;
 	background: var(--color-button-bg, #343c4a);
 	color: var(--color-foreground);
 	border-radius: 6px;
 	padding: 8px 10px;
+	margin-top: var(--space-md);
 
 	&.active {
 		background: var(--color-button-active-bg);

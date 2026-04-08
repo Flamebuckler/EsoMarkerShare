@@ -10,6 +10,8 @@ const loginPanel = document.getElementById('loginPanel');
 const adminPanel = document.getElementById('adminPanel');
 const adminPanelRaids = document.getElementById('adminPanelRaids');
 const adminPanelMarkers = document.getElementById('adminPanelMarkers');
+const adminRoleStatus = document.getElementById('adminRoleStatus');
+const logoutBtn = document.getElementById('logoutBtn');
 
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
@@ -34,14 +36,56 @@ const saveBtn = document.getElementById('saveBtn');
 const saveStatus = document.getElementById('saveStatus');
 const markerTable = document.getElementById('markerTable');
 
+const adminPanelMaintainers = document.getElementById('adminPanelMaintainers');
+const newMaintainerUsernameInput = document.getElementById('newMaintainerUsername');
+const newMaintainerPasswordInput = document.getElementById('newMaintainerPassword');
+const createMaintainerBtn = document.getElementById('createMaintainerBtn');
+const maintainerStatus = document.getElementById('maintainerStatus');
+const maintainerUsernameSelect = document.getElementById('maintainerUsernameSelect');
+const maintainerGroupSelect = document.getElementById('maintainerGroupSelect');
+const updateMaintainerGroupsBtn = document.getElementById('updateMaintainerGroupsBtn');
+const maintainerList = document.getElementById('maintainerList');
+
 let groupsCache = [];
 let raidsCache = [];
+let maintainersCache = [];
+let currentUserRole = null;
+let currentUsername = null;
+let currentMaintainerGroupIds = [];
 
-const token = localStorage.getItem(TOKEN_KEY);
-if (token) {
+async function init() {
+	const token = localStorage.getItem(TOKEN_KEY);
+	if (!token) {
+		return;
+	}
+
+	const payload = parseJwtPayload(token);
+	if (!payload?.role || !payload?.sub) {
+		showLogin('Invalid session token.');
+		return;
+	}
+
+	currentUserRole = payload.role;
+	currentUsername = payload.sub;
+
+	if (currentUserRole === 'maintainer') {
+		try {
+			await loadMaintainerMe();
+		} catch (error) {
+			showLogin('Session expired. Please log in again.');
+			return;
+		}
+	}
+
 	showAdmin();
-	loadSelectionData();
+	await loadSelectionData();
 }
+
+init();
+
+logoutBtn?.addEventListener('click', () => {
+	logout();
+});
 
 groupSelect.addEventListener('change', () => {
 	loadMarkerList();
@@ -70,6 +114,14 @@ loginBtn.addEventListener('click', async () => {
 		}
 
 		localStorage.setItem(TOKEN_KEY, data.token);
+		const payload = parseJwtPayload(data.token);
+		currentUserRole = payload?.role || null;
+		currentUsername = payload?.sub || null;
+
+		if (currentUserRole === 'maintainer') {
+			await loadMaintainerMe();
+		}
+
 		loginStatus.textContent = 'Login successful.';
 		showAdmin();
 		await loadSelectionData();
@@ -108,6 +160,92 @@ createGroupBtn.addEventListener('click', async () => {
 		await loadSelectionData();
 	} catch (error) {
 		groupStatus.textContent = `Error: ${error.message}`;
+	}
+});
+
+createMaintainerBtn.addEventListener('click', async () => {
+	maintainerStatus.textContent = 'Saving...';
+
+	const username = newMaintainerUsernameInput.value.trim();
+	const password = newMaintainerPasswordInput.value;
+	if (!username || !password) {
+		maintainerStatus.textContent = 'Username and password are required.';
+		return;
+	}
+
+	try {
+		const activeToken = getRequiredToken();
+		const response = await fetch(`${API_BASE}/api/maintainers`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${activeToken}`,
+			},
+			body: JSON.stringify({ username, password }),
+		});
+
+		const data = await response.json();
+		if (response.status === 401) {
+			showLogin('Session expired. Please log in again.');
+			throw new Error(data.error || 'Session expired.');
+		}
+		if (!response.ok) {
+			throw new Error(data.error || `HTTP ${response.status}`);
+		}
+
+		maintainerStatus.textContent = data.created
+			? `Maintainer created: ${data.maintainer.username}`
+			: `Maintainer already exists: ${data.maintainer.username}`;
+		newMaintainerUsernameInput.value = '';
+		newMaintainerPasswordInput.value = '';
+		await loadMaintainerList();
+	} catch (error) {
+		maintainerStatus.textContent = `Error: ${error.message}`;
+	}
+});
+
+maintainerUsernameSelect.addEventListener('change', () => {
+	updateMaintainerGroupSelection();
+});
+
+updateMaintainerGroupsBtn.addEventListener('click', async () => {
+	const username = maintainerUsernameSelect.value;
+	if (!username) {
+		maintainerStatus.textContent = 'Select a maintainer to update.';
+		return;
+	}
+
+	const groupIds = Array.from(maintainerGroupSelect.selectedOptions).map((option) => option.value);
+
+	maintainerStatus.textContent = 'Saving...';
+
+	try {
+		const activeToken = getRequiredToken();
+		const response = await fetch(
+			`${API_BASE}/api/maintainers/${encodeURIComponent(username)}/groups`,
+			{
+				method: 'PUT',
+				headers: {
+					'content-type': 'application/json',
+					authorization: `Bearer ${activeToken}`,
+				},
+				body: JSON.stringify({ groupIds }),
+			},
+		);
+
+		const data = await response.json();
+		if (response.status === 401) {
+			showLogin('Session expired. Please log in again.');
+			throw new Error(data.error || 'Session expired.');
+		}
+		if (!response.ok) {
+			throw new Error(data.error || `HTTP ${response.status}`);
+		}
+
+		maintainerStatus.textContent = `Assignments updated for ${username}`;
+		await loadMaintainerList();
+	} catch (error) {
+		maintainerStatus.textContent = `Error: ${error.message}`;
 	}
 });
 
@@ -200,19 +338,45 @@ saveBtn.addEventListener('click', async () => {
 	}
 });
 
+function isAdmin() {
+	return currentUserRole === 'admin';
+}
+
+function isMaintainer() {
+	return currentUserRole === 'maintainer';
+}
+
 function showAdmin() {
 	loginPanel.classList.add('hidden');
-	adminPanel.classList.remove('hidden');
+	adminPanel.classList.toggle('hidden', !isAdmin());
 	adminPanelRaids.classList.remove('hidden');
 	adminPanelMarkers.classList.remove('hidden');
+	adminPanelMaintainers.classList.toggle('hidden', !isAdmin());
+	logoutBtn?.classList.remove('hidden');
+	if (adminRoleStatus) {
+		adminRoleStatus.textContent = isAdmin()
+			? 'Logged in as Admin'
+			: isMaintainer()
+				? 'Logged in as Maintainer'
+				: '';
+	}
 }
 
 function showLogin(message) {
+	logoutBtn?.classList.add('hidden');
+	if (adminRoleStatus) {
+		adminRoleStatus.textContent = '';
+	}
 	localStorage.removeItem(TOKEN_KEY);
+	currentUserRole = null;
+	currentUsername = null;
+	currentMaintainerGroupIds = [];
+	maintainersCache = [];
 	loginPanel.classList.remove('hidden');
 	adminPanel.classList.add('hidden');
 	adminPanelRaids.classList.add('hidden');
 	adminPanelMarkers.classList.add('hidden');
+	adminPanelMaintainers.classList.add('hidden');
 	loginStatus.textContent = message || 'Please log in again.';
 }
 
@@ -223,6 +387,19 @@ function getRequiredToken() {
 		throw new Error('Not logged in.');
 	}
 	return token;
+}
+
+function logout() {
+	localStorage.removeItem(TOKEN_KEY);
+	currentUserRole = null;
+	currentUsername = null;
+	currentMaintainerGroupIds = [];
+	maintainersCache = [];
+	if (adminRoleStatus) {
+		adminRoleStatus.textContent = '';
+	}
+	logoutBtn?.classList.add('hidden');
+	showLogin('Logged out.');
 }
 
 async function loadSelectionData() {
@@ -236,31 +413,52 @@ async function loadSelectionData() {
 		groupsCache = groups;
 		raidsCache = raids;
 
-		renderSelect(groupSelect, groups, 'No groups available');
+		if (isMaintainer()) {
+			groupsCache = groups.filter((group) => currentMaintainerGroupIds.includes(group.id));
+		}
+
+		renderSelect(groupSelect, groupsCache, 'No groups available');
 		renderSelect(raidSelect, raids, 'No raids available');
-		renderEntityList(groupList, groups, 'Keine Raidgruppen vorhanden', async (item) => {
-			if (!confirm(`Really delete group?\n\n${item.name}`)) return;
-			try {
-				const activeToken = getRequiredToken();
-				await apiDelete(`/api/groups/${encodeURIComponent(item.id)}`, activeToken);
-				groupStatus.textContent = `Raidgruppe gelöscht: ${item.name}`;
-				await loadSelectionData();
-			} catch (error) {
-				groupStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
-			}
-		});
-		renderEntityList(raidList, raids, 'Keine Raids vorhanden', async (item) => {
-			if (!confirm(`Really delete raid?\n\n${item.name}`)) return;
-			try {
-				const activeToken = getRequiredToken();
-				await apiDelete(`/api/raids/${encodeURIComponent(item.id)}`, activeToken);
-				raidStatus.textContent = `Raid gelöscht: ${item.name}`;
-				await loadSelectionData();
-			} catch (error) {
-				raidStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
-			}
-		});
+		renderEntityList(
+			groupList,
+			groups,
+			'No groups available',
+			isAdmin()
+				? async (item) => {
+						if (!confirm(`Really delete group?\n\n${item.name}`)) return;
+						try {
+							const activeToken = getRequiredToken();
+							await apiDelete(`/api/groups/${encodeURIComponent(item.id)}`, activeToken);
+							groupStatus.textContent = `Group deleted: ${item.name}`;
+							await loadSelectionData();
+						} catch (error) {
+							groupStatus.textContent = `Delete failed: ${error.message}`;
+						}
+					}
+				: null,
+		);
+		renderEntityList(
+			raidList,
+			raids,
+			'No raids available',
+			isAdmin()
+				? async (item) => {
+						if (!confirm(`Really delete raid?\n\n${item.name}`)) return;
+						try {
+							const activeToken = getRequiredToken();
+							await apiDelete(`/api/raids/${encodeURIComponent(item.id)}`, activeToken);
+							raidStatus.textContent = `Raid deleted: ${item.name}`;
+							await loadSelectionData();
+						} catch (error) {
+							raidStatus.textContent = `Delete failed: ${error.message}`;
+						}
+					}
+				: null,
+		);
 		await loadMarkerList();
+		if (isAdmin()) {
+			await loadMaintainerList();
+		}
 	} catch (error) {
 		saveStatus.textContent = `Error loading lists: ${error.message}`;
 	}
@@ -269,10 +467,15 @@ async function loadSelectionData() {
 async function loadMarkerList() {
 	const groupId = groupSelect.value;
 	const raidId = raidSelect.value;
+	const token = localStorage.getItem(TOKEN_KEY);
 
 	try {
-		const data = await apiGet('/api/markers');
+		const data = await apiGet('/api/markers', token);
 		let markers = data.markers || [];
+
+		if (isMaintainer()) {
+			markers = markers.filter((marker) => currentMaintainerGroupIds.includes(marker.groupId));
+		}
 
 		if (groupId) {
 			markers = markers.filter((marker) => marker.groupId === groupId);
@@ -335,32 +538,36 @@ function renderMarkerTable(markers, emptyLabel) {
 		copyLinkButton.textContent = 'Copy link';
 		copyLinkButton.addEventListener('click', async () => {
 			const ok = await copyText(detailUrl);
-			saveStatus.textContent = ok ? 'Detail-Link kopiert.' : 'Kopieren fehlgeschlagen.';
-		});
-
-		const deleteButton = document.createElement('button');
-		deleteButton.type = 'button';
-		deleteButton.innerHTML = DELETE_ICON_SVG;
-		deleteButton.classList.add('icon-button');
-		deleteButton.title = 'Löschen';
-		deleteButton.setAttribute('aria-label', 'Löschen');
-		deleteButton.addEventListener('click', async () => {
-			if (!confirm(`Really delete marker?\n\nVersion v${marker.version}`)) return;
-			try {
-				const activeToken = getRequiredToken();
-				await apiDelete(`/api/markers/${encodeURIComponent(marker.id)}`, activeToken);
-				saveStatus.textContent = `Marker gelöscht: v${marker.version}`;
-				await loadMarkerList();
-			} catch (error) {
-				saveStatus.textContent = `Löschen fehlgeschlagen: ${error.message}`;
-			}
+			saveStatus.textContent = ok ? 'Link copied.' : 'Copy failed.';
 		});
 
 		actionsTd.appendChild(detailButton);
 		actionsTd.appendChild(document.createTextNode(' '));
 		actionsTd.appendChild(copyLinkButton);
-		actionsTd.appendChild(document.createTextNode(' '));
-		actionsTd.appendChild(deleteButton);
+
+		const canDeleteMarker = isAdmin();
+
+		if (canDeleteMarker) {
+			const deleteButton = document.createElement('button');
+			deleteButton.type = 'button';
+			deleteButton.innerHTML = DELETE_ICON_SVG;
+			deleteButton.classList.add('icon-button');
+			deleteButton.title = 'Delete';
+			deleteButton.setAttribute('aria-label', 'Delete');
+			deleteButton.addEventListener('click', async () => {
+				if (!confirm(`Really delete marker?\n\nVersion v${marker.version}`)) return;
+				try {
+					const activeToken = getRequiredToken();
+					await apiDelete(`/api/markers/${encodeURIComponent(marker.id)}`, activeToken);
+					saveStatus.textContent = `Marker deleted: v${marker.version}`;
+					await loadMarkerList();
+				} catch (error) {
+					saveStatus.textContent = `Delete failed: ${error.message}`;
+				}
+			});
+			actionsTd.appendChild(document.createTextNode(' '));
+			actionsTd.appendChild(deleteButton);
+		}
 
 		tr.appendChild(actionsTd);
 		tbody.appendChild(tr);
@@ -445,16 +652,109 @@ function renderEntityList(listElement, items, emptyLabel, onDelete) {
 		deleteButton.type = 'button';
 		deleteButton.innerHTML = DELETE_ICON_SVG;
 		deleteButton.classList.add('icon-button');
-		deleteButton.title = 'Löschen';
-		deleteButton.setAttribute('aria-label', 'Löschen');
+		deleteButton.title = 'Delete';
+		deleteButton.setAttribute('aria-label', 'Delete');
 		deleteButton.addEventListener('click', () => {
 			onDelete(item);
 		});
 
 		listItem.appendChild(text);
+		if (onDelete) {
+			const deleteButton = document.createElement('button');
+			deleteButton.type = 'button';
+			deleteButton.innerHTML = DELETE_ICON_SVG;
+			deleteButton.classList.add('icon-button');
+			deleteButton.title = 'Delete';
+			deleteButton.setAttribute('aria-label', 'Delete');
+			deleteButton.addEventListener('click', () => {
+				onDelete(item);
+			});
+			listItem.appendChild(document.createTextNode(' '));
+			listItem.appendChild(deleteButton);
+		}
+		listElement.appendChild(listItem);
+	}
+}
+
+async function loadMaintainerMe() {
+	const activeToken = getRequiredToken();
+	const data = await apiGet('/api/maintainers/me', activeToken);
+	currentMaintainerGroupIds = data.groupIds || [];
+}
+
+async function loadMaintainerList() {
+	if (!isAdmin()) return;
+	const activeToken = getRequiredToken();
+	const data = await apiGet('/api/maintainers', activeToken);
+	const maintainers = data.maintainers || [];
+	maintainersCache = maintainers;
+
+	maintainerUsernameSelect.innerHTML = '';
+	for (const maintainer of maintainers) {
+		const option = document.createElement('option');
+		option.value = maintainer.username;
+		option.textContent = maintainer.username;
+		maintainerUsernameSelect.appendChild(option);
+	}
+
+	updateMaintainerGroupSelection();
+	renderMaintainerList(maintainers);
+}
+
+function updateMaintainerGroupSelection() {
+	const username = maintainerUsernameSelect.value;
+	const maintainer = maintainersCache.find((item) => item.username === username);
+	const selectedGroupIds = maintainer?.groupIds || [];
+
+	maintainerGroupSelect.innerHTML = '';
+	for (const group of groupsCache) {
+		const option = document.createElement('option');
+		option.value = group.id;
+		option.textContent = group.name;
+		if (selectedGroupIds.includes(group.id)) {
+			option.selected = true;
+		}
+		maintainerGroupSelect.appendChild(option);
+	}
+}
+
+function renderMaintainerList(maintainers) {
+	maintainerList.innerHTML = '';
+
+	if (!maintainers.length) {
+		const emptyItem = document.createElement('li');
+		emptyItem.textContent = 'No maintainers created';
+		maintainerList.appendChild(emptyItem);
+		return;
+	}
+
+	for (const maintainer of maintainers) {
+		const listItem = document.createElement('li');
+		const text = document.createElement('span');
+		text.textContent = `${maintainer.username} — ${maintainer.groupIds?.join(', ') || 'no groups'}`;
+
+		const deleteButton = document.createElement('button');
+		deleteButton.type = 'button';
+		deleteButton.innerHTML = DELETE_ICON_SVG;
+		deleteButton.classList.add('icon-button');
+		deleteButton.title = 'Delete maintainer';
+		deleteButton.setAttribute('aria-label', 'Delete maintainer');
+		deleteButton.addEventListener('click', async () => {
+			if (!confirm(`Really delete maintainer?\n\n${maintainer.username}`)) return;
+			try {
+				const activeToken = getRequiredToken();
+				await apiDelete(`/api/maintainers/${encodeURIComponent(maintainer.username)}`, activeToken);
+				await loadMaintainerList();
+				maintainerStatus.textContent = `Maintainer deleted: ${maintainer.username}`;
+			} catch (error) {
+				maintainerStatus.textContent = `Error: ${error.message}`;
+			}
+		});
+
+		listItem.appendChild(text);
 		listItem.appendChild(document.createTextNode(' '));
 		listItem.appendChild(deleteButton);
-		listElement.appendChild(listItem);
+		maintainerList.appendChild(listItem);
 	}
 }
 
@@ -480,8 +780,36 @@ function renderSelect(selectElement, items, emptyLabel) {
 	}
 }
 
-async function apiGet(path) {
-	const response = await fetch(`${API_BASE}${path}`);
+function parseJwtPayload(token) {
+	if (!token || typeof token !== 'string') {
+		return null;
+	}
+
+	const parts = token.split('.');
+	if (parts.length !== 3) {
+		return null;
+	}
+
+	try {
+		const payload = parts[1];
+		const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+		const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+		const decoded = atob(padded);
+		return JSON.parse(decoded);
+	} catch {
+		return null;
+	}
+}
+
+async function apiGet(path, token) {
+	const headers = token
+		? {
+				authorization: `Bearer ${token}`,
+			}
+		: undefined;
+	const response = await fetch(`${API_BASE}${path}`, {
+		headers,
+	});
 	const data = await response.json();
 
 	if (response.status === 401) {
